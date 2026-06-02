@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Tracker</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3354;
+    --accent: #4f6ef7;
+    --accent2: #6ee7b7;
+    --home: #f59e0b;
+    --danger: #ef4444;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --radius: 14px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* HEADER */
+  header {
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  header h1 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.3px; }
+  header h1 span { color: var(--accent); }
+
+  .header-actions { display: flex; gap: 10px; }
+
+  /* BUTTONS */
+  button {
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 8px 14px;
+    transition: all 0.15s;
+  }
+
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #3a56d4; }
+
+  .btn-ghost {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { background: var(--border); }
+
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-danger:hover { background: #c53030; }
+
+  .btn-sm { padding: 5px 10px; font-size: 0.78rem; border-radius: 6px; }
+
+  /* MAIN LAYOUT */
+  main { flex: 1; padding: 28px; display: flex; flex-direction: column; gap: 28px; }
+
+  /* LOCATION BOARD */
+  #board {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 18px;
+  }
+
+  .location-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    transition: box-shadow 0.2s;
+    position: relative;
+  }
+
+  .location-card.is-home {
+    border-color: var(--home);
+    box-shadow: 0 0 0 1px var(--home), 0 0 24px rgba(245,158,11,0.12);
+  }
+
+  .location-card:hover { box-shadow: 0 4px 24px rgba(0,0,0,0.3); }
+
+  .loc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .loc-name {
+    font-size: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .home-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    background: var(--home);
+    color: #000;
+    padding: 2px 7px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .loc-count {
+    font-size: 0.78rem;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .loc-actions { display: flex; gap: 6px; }
+
+  .employee-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 48px;
+  }
+
+  .employee-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 8px 12px;
+    transition: all 0.2s;
+    animation: slideIn 0.25s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .employee-chip.home-chip { background: rgba(245,158,11,0.12); }
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+    color: #fff;
+  }
+
+  .chip-name { flex: 1; font-size: 0.88rem; font-weight: 500; }
+
+  .chip-status {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent2);
+    flex-shrink: 0;
+  }
+
+  .chip-status.home-dot { background: var(--home); }
+
+  .empty-loc {
+    color: var(--muted);
+    font-size: 0.82rem;
+    text-align: center;
+    padding: 10px 0;
+  }
+
+  /* SELF-SERVICE PANEL */
+  #self-service {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+  }
+
+  #self-service h2 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--accent2);
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+  }
+
+  .self-form {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+
+  label { font-size: 0.78rem; color: var(--muted); font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; }
+
+  select, input[type="text"] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 9px 12px;
+    font-size: 0.88rem;
+    font-family: inherit;
+    min-width: 180px;
+    transition: border-color 0.15s;
+  }
+
+  select:focus, input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  select option { background: var(--surface2); }
+
+  /* MODALS */
+  .modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-backdrop.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+    animation: popIn 0.2s ease;
+  }
+
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  .modal h2 { font-size: 1.1rem; font-weight: 700; }
+
+  .modal-body { display: flex; flex-direction: column; gap: 12px; }
+
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; }
+
+  /* MANAGE LIST (employees & locations) */
+  .manage-list { display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; }
+
+  .manage-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    gap: 10px;
+  }
+
+  .manage-item-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+  .manage-item-name { font-size: 0.88rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* TOAST */
+  #toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 500;
+    pointer-events: none;
+  }
+
+  .toast {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent2);
+    border-radius: 10px;
+    padding: 12px 18px;
+    font-size: 0.85rem;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    animation: toastIn 0.3s ease forwards;
+    max-width: 300px;
+  }
+
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .toast.fade-out {
+    animation: toastOut 0.4s ease forwards;
+  }
+
+  @keyframes toastOut {
+    to { opacity: 0; transform: translateX(20px); }
+  }
+
+  /* HOME STAR INDICATOR */
+  .home-star {
+    font-size: 1.1rem;
+    cursor: pointer;
+    opacity: 0.4;
+    transition: opacity 0.15s, transform 0.15s;
+    line-height: 1;
+  }
+  .home-star.active { opacity: 1; }
+  .home-star:hover { transform: scale(1.2); }
+
+  /* CHECKBOX ROW */
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.88rem;
+  }
+  .checkbox-row input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--home); }
+
+  /* Emoji color dots for avatars (cycle through palette) */
+
+  .no-employees {
+    color: var(--muted);
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 12px;
+  }
+
+  .loc-icon { font-size: 1.2rem; }
+
+  @media (max-width: 600px) {
+    header { padding: 14px 16px; }
+    main { padding: 16px; gap: 16px; }
+    .self-form { flex-direction: column; }
+    select, input[type="text"] { min-width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Team <span>Tracker</span></h1>
+  <div class="header-actions">
+    <button class="btn-ghost" onclick="openModal('modal-locations')">📍 Locations</button>
+    <button class="btn-primary" onclick="openModal('modal-employees')">👥 Employees</button>
+  </div>
+</header>
+
+<main>
+  <!-- Self-service update bar -->
+  <section id="self-service">
+    <h2>📣 Update Your Location</h2>
+    <div class="self-form">
+      <div class="form-group">
+        <label>Who are you?</label>
+        <select id="sel-employee">
+          <option value="">— Select employee —</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Where are you?</label>
+        <select id="sel-location">
+          <option value="">— Select location —</option>
+        </select>
+      </div>
+      <button class="btn-primary" onclick="updateEmployeeLocation()" style="align-self:flex-end;padding:9px 20px;">Check In</button>
+    </div>
+  </section>
+
+  <!-- Board -->
+  <div id="board"></div>
+
+  <p id="empty-msg" style="color:var(--muted);text-align:center;display:none;">
+    Add some locations and employees to get started!
+  </p>
+</main>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- ===================== MODAL: Employees ===================== -->
+<div class="modal-backdrop" id="modal-employees">
+  <div class="modal">
+    <h2>👥 Manage Employees</h2>
+    <div class="modal-body">
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="new-employee-name" placeholder="Employee name" style="flex:1;" onkeydown="if(event.key==='Enter') addEmployee()">
+        <button class="btn-primary" onclick="addEmployee()">Add</button>
+      </div>
+      <div class="manage-list" id="employee-manage-list"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('modal-employees')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: Locations ===================== -->
+<div class="modal-backdrop" id="modal-locations">
+  <div class="modal">
+    <h2>📍 Manage Locations</h2>
+    <div class="modal-body">
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="new-location-name" placeholder="Location name" style="flex:1;" onkeydown="if(event.key==='Enter') addLocation()">
+        <button class="btn-primary" onclick="addLocation()">Add</button>
+      </div>
+      <p style="font-size:0.78rem;color:var(--muted);">⭐ Click the star to mark a location as Home.</p>
+      <div class="manage-list" id="location-manage-list"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('modal-locations')">Done</button>
+    </div>
+  </div>
+</div>
+
+<audio id="snd-checkin" preload="auto"></audio>
+
+<script>
+// ─── State ────────────────────────────────────────────────────
+const COLORS = ['#4f6ef7','#6ee7b7','#f59e0b','#ec4899','#8b5cf6','#10b981','#f97316','#06b6d4','#ef4444','#84cc16'];
+
+let state = {
+  employees: [],  // { id, name, locationId | null }
+  locations: [],  // { id, name, isHome }
+};
+
+function save() {
+  localStorage.setItem('teamtracker', JSON.stringify(state));
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem('teamtracker');
+    if (raw) state = JSON.parse(raw);
+  } catch(e) {}
+}
+
+function uid() { return Math.random().toString(36).slice(2,9); }
+
+function initials(name) {
+  return name.trim().split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase();
+}
+
+function colorFor(id) {
+  const idx = [...id].reduce((a,c) => a + c.charCodeAt(0), 0) % COLORS.length;
+  return COLORS[idx];
+}
+
+// ─── Sounds ───────────────────────────────────────────────────
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let ctx;
+
+function getAudioCtx() {
+  if (!ctx) ctx = new AudioCtx();
+  return ctx;
+}
+
+function playCheckin() {
+  try {
+    const ac = getAudioCtx();
+    const t = ac.currentTime;
+
+    // Two-note chime: C5 → E5
+    [[523.25, 0], [659.25, 0.18]].forEach(([freq, delay]) => {
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, t + delay);
+      gain.gain.linearRampToValueAtTime(0.25, t + delay + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.5);
+      osc.connect(gain);
+      gain.connect(ac.destination);
+      osc.start(t + delay);
+      osc.stop(t + delay + 0.6);
+    });
+  } catch(e) {}
+}
+
+function playAdd() {
+  try {
+    const ac = getAudioCtx();
+    const t = ac.currentTime;
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(440, t);
+    osc.frequency.exponentialRampToValueAtTime(880, t + 0.12);
+    gain.gain.setValueAtTime(0.2, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    osc.connect(gain);
+    gain.connect(ac.destination);
+    osc.start(t);
+    osc.stop(t + 0.35);
+  } catch(e) {}
+}
+
+function playRemove() {
+  try {
+    const ac = getAudioCtx();
+    const t = ac.currentTime;
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(440, t);
+    osc.frequency.exponentialRampToValueAtTime(220, t + 0.14);
+    gain.gain.setValueAtTime(0.18, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    osc.connect(gain);
+    gain.connect(ac.destination);
+    osc.start(t);
+    osc.stop(t + 0.35);
+  } catch(e) {}
+}
+
+// ─── Render ───────────────────────────────────────────────────
+function render() {
+  renderBoard();
+  renderSelects();
+  renderEmployeeList();
+  renderLocationList();
+}
+
+function renderBoard() {
+  const board = document.getElementById('board');
+  const empty = document.getElementById('empty-msg');
+
+  if (state.locations.length === 0) {
+    board.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  board.innerHTML = state.locations.map(loc => {
+    const here = state.employees.filter(e => e.locationId === loc.id);
+    const isHome = loc.isHome;
+
+    const chips = here.length
+      ? here.map(e => `
+          <div class="employee-chip ${isHome ? 'home-chip' : ''}">
+            <div class="avatar" style="background:${colorFor(e.id)}">${initials(e.name)}</div>
+            <span class="chip-name">${esc(e.name)}</span>
+            <div class="chip-status ${isHome ? 'home-dot' : ''}"></div>
+          </div>
+        `).join('')
+      : `<div class="empty-loc">No one here</div>`;
+
+    return `
+      <div class="location-card ${isHome ? 'is-home' : ''}">
+        <div class="loc-header">
+          <div class="loc-name">
+            <span class="loc-icon">${isHome ? '🏠' : '📍'}</span>
+            ${esc(loc.name)}
+            ${isHome ? '<span class="home-badge">Home</span>' : ''}
+          </div>
+          <span class="loc-count">${here.length} / ${state.employees.length}</span>
+        </div>
+        <div class="employee-list">${chips}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderSelects() {
+  const empSel = document.getElementById('sel-employee');
+  const locSel = document.getElementById('sel-location');
+  const prevEmp = empSel.value;
+  const prevLoc = locSel.value;
+
+  empSel.innerHTML = '<option value="">— Select employee —</option>' +
+    state.employees.map(e => `<option value="${e.id}">${esc(e.name)}</option>`).join('');
+  locSel.innerHTML = '<option value="">— Select location —</option>' +
+    state.locations.map(l => `<option value="${l.id}">${esc(l.name)}${l.isHome ? ' 🏠' : ''}</option>`).join('');
+
+  if (prevEmp) empSel.value = prevEmp;
+  if (prevLoc) locSel.value = prevLoc;
+}
+
+function renderEmployeeList() {
+  const list = document.getElementById('employee-manage-list');
+  if (!state.employees.length) {
+    list.innerHTML = '<div class="no-employees">No employees yet.</div>';
+    return;
+  }
+  list.innerHTML = state.employees.map(e => {
+    const loc = state.locations.find(l => l.id === e.locationId);
+    return `
+      <div class="manage-item">
+        <div class="manage-item-info">
+          <div class="avatar" style="background:${colorFor(e.id)};width:28px;height:28px;font-size:0.72rem">${initials(e.name)}</div>
+          <div>
+            <div class="manage-item-name">${esc(e.name)}</div>
+            <div style="font-size:0.74rem;color:var(--muted)">${loc ? esc(loc.name) : 'Not checked in'}</div>
+          </div>
+        </div>
+        <button class="btn-danger btn-sm" onclick="removeEmployee('${e.id}')">Remove</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderLocationList() {
+  const list = document.getElementById('location-manage-list');
+  if (!state.locations.length) {
+    list.innerHTML = '<div class="no-employees">No locations yet.</div>';
+    return;
+  }
+  list.innerHTML = state.locations.map(loc => `
+    <div class="manage-item">
+      <div class="manage-item-info">
+        <span class="loc-icon">${loc.isHome ? '🏠' : '📍'}</span>
+        <span class="manage-item-name">${esc(loc.name)}</span>
+        ${loc.isHome ? '<span class="home-badge">Home</span>' : ''}
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <span class="home-star ${loc.isHome ? 'active' : ''}" title="Set as Home" onclick="setHome('${loc.id}')">⭐</span>
+        <button class="btn-danger btn-sm" onclick="removeLocation('${loc.id}')">Remove</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── Actions ──────────────────────────────────────────────────
+function addEmployee() {
+  const input = document.getElementById('new-employee-name');
+  const name = input.value.trim();
+  if (!name) return;
+  if (state.employees.some(e => e.name.toLowerCase() === name.toLowerCase())) {
+    toast('Employee already exists.'); return;
+  }
+  state.employees.push({ id: uid(), name, locationId: null });
+  save();
+  render();
+  input.value = '';
+  playAdd();
+  toast(`${name} added!`);
+}
+
+function removeEmployee(id) {
+  const emp = state.employees.find(e => e.id === id);
+  state.employees = state.employees.filter(e => e.id !== id);
+  save();
+  render();
+  playRemove();
+  if (emp) toast(`${emp.name} removed.`);
+}
+
+function addLocation() {
+  const input = document.getElementById('new-location-name');
+  const name = input.value.trim();
+  if (!name) return;
+  if (state.locations.some(l => l.name.toLowerCase() === name.toLowerCase())) {
+    toast('Location already exists.'); return;
+  }
+  const isFirst = state.locations.length === 0;
+  state.locations.push({ id: uid(), name, isHome: isFirst });
+  save();
+  render();
+  input.value = '';
+  playAdd();
+  toast(`${name} added!${isFirst ? ' (set as Home)' : ''}`);
+}
+
+function removeLocation(id) {
+  const loc = state.locations.find(l => l.id === id);
+  // Unassign employees at this location
+  state.employees.forEach(e => { if (e.locationId === id) e.locationId = null; });
+  state.locations = state.locations.filter(l => l.id !== id);
+  save();
+  render();
+  playRemove();
+  if (loc) toast(`${loc.name} removed.`);
+}
+
+function setHome(id) {
+  state.locations.forEach(l => l.isHome = (l.id === id));
+  save();
+  render();
+  const loc = state.locations.find(l => l.id === id);
+  if (loc) toast(`${loc.name} is now Home 🏠`);
+}
+
+function updateEmployeeLocation() {
+  const empId = document.getElementById('sel-employee').value;
+  const locId = document.getElementById('sel-location').value;
+  if (!empId || !locId) { toast('Please select both an employee and a location.'); return; }
+
+  const emp = state.employees.find(e => e.id === empId);
+  const loc = state.locations.find(l => l.id === locId);
+
+  if (emp && emp.locationId === locId) { toast(`${emp.name} is already at ${loc.name}.`); return; }
+
+  emp.locationId = locId;
+  save();
+  render();
+  playCheckin();
+  toast(`${emp.name} checked in at ${loc.name}${loc.isHome ? ' 🏠' : ''}!`);
+}
+
+// ─── Modals ───────────────────────────────────────────────────
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  render();
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// Close on backdrop click
+document.querySelectorAll('.modal-backdrop').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+// ─── Toast ────────────────────────────────────────────────────
+function toast(msg, duration = 3000) {
+  const c = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(() => {
+    el.classList.add('fade-out');
+    setTimeout(() => el.remove(), 400);
+  }, duration);
+}
+
+// ─── Escape ───────────────────────────────────────────────────
+function esc(str) {
+  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+// ─── Init ─────────────────────────────────────────────────────
+load();
+render();
+</script>
+</body>
+</html>
