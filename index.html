@@ -780,49 +780,42 @@ function buildLeafletIcon(loc, people){
   });
 }
 
-// Collision avoidance: fixed lat/lng offsets (zoom-stable, pan-stable).
-// Groups markers within ~150m of each other and fans them outward.
-// Offsets are stored per-session so markers stay put during zoom/pan.
-const _locOffsets = {}; // locId -> {dlat, dlng} permanent offset for this session
-
+// Collision avoidance: recomputed fresh every render using stable sort order.
+// Same sort order = same angle = same visual position every time, no caching needed.
+// Groups markers within ~600m, fans them out by a fixed degree amount.
 function computeOffsets(locations, allPositions){
-  // ~150m in degrees lat (rough, good enough for grouping)
-  const THRESH = 0.0014;
+  const offsets = {}; // locId -> {dlat, dlng}
+  const THRESH = 0.006; // ~600m — catches schools on the same campus
   const used = new Set();
-  const groups = [];
-  const locs = locations.filter(l => allPositions[l.id]);
+  // Sort by id for consistent grouping order across renders
+  const locs = [...locations].filter(l => allPositions[l.id]).sort((a,b)=>a.id<b.id?-1:1);
 
-  locs.forEach((loc, i) => {
+  locs.forEach(loc => {
     if(used.has(loc.id)) return;
+    const p1 = allPositions[loc.id];
     const group = [loc.id];
     used.add(loc.id);
-    const p1 = allPositions[loc.id];
-    locs.forEach((loc2) => {
+    locs.forEach(loc2 => {
       if(used.has(loc2.id)) return;
       const p2 = allPositions[loc2.id];
-      const dlat = p1.lat - p2.lat, dlng = p1.lng - p2.lng;
-      if(Math.sqrt(dlat*dlat + dlng*dlng) < THRESH){
-        group.push(loc2.id); used.add(loc2.id);
-      }
+      const d = Math.sqrt(Math.pow(p1.lat-p2.lat,2)+Math.pow(p1.lng-p2.lng,2));
+      if(d < THRESH){ group.push(loc2.id); used.add(loc2.id); }
     });
-    if(group.length > 1) groups.push(group);
-  });
+    if(group.length < 2) return; // lone marker, no offset needed
 
-  groups.forEach(group => {
     const n = group.length;
-    // Only assign offset if not already set for this session
+    // Spread radius grows with group size: ~200m base + 80m per extra member
+    const R = 0.0018 + (n - 2) * 0.0007;
     group.forEach((id, k) => {
-      if(_locOffsets[id]) return;
       const base = allPositions[id];
-      // Spread radius: ~120m in degrees, grows slightly with group size
-      const R = 0.0011 + (n - 2) * 0.0003;
       const angle = (2 * Math.PI * k / n) - Math.PI / 2;
-      _locOffsets[id] = {
+      offsets[id] = {
         dlat: R * Math.sin(angle),
         dlng: R * Math.cos(angle) / Math.cos(base.lat * Math.PI / 180)
       };
     });
   });
+  return offsets;
 }
 
 function renderMapMarkers(){
@@ -843,7 +836,7 @@ function renderMapMarkers(){
   }
 
   // Compute stable lat/lng offsets for nearby markers
-  computeOffsets(state.locations, allPositions);
+  const offsets = computeOffsets(state.locations, allPositions);
   const positions = [];
 
   for(const loc of state.locations){
@@ -852,7 +845,7 @@ function renderMapMarkers(){
       if(leafletMarkers[loc.id]){ leafletMarkers[loc.id].remove(); delete leafletMarkers[loc.id]; }
       continue;
     }
-    const off = _locOffsets[loc.id];
+    const off = offsets[loc.id];
     const pos = off
       ? {lat: rawPos.lat + off.dlat, lng: rawPos.lng + off.dlng}
       : rawPos;
