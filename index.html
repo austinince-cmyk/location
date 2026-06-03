@@ -647,8 +647,14 @@ let _lastLocalHistWrite = 0;
 
 async function saveState() {
   _lastLocalWrite = Date.now();
-  try { await fbPut(DB.state, state); localStorage.setItem('tt_state', JSON.stringify(state)); }
-  catch(e) { setSyncStatus('error'); }
+  try {
+    await fbPut(DB.state, state);
+    localStorage.setItem('tt_state', JSON.stringify(state));
+  } catch(e) {
+    setSyncStatus('error');
+    console.error('saveState failed:', e);
+    toast('⚠️ Save failed — check connection.');
+  }
 }
 async function saveHistory() {
   _lastLocalHistWrite = Date.now();
@@ -670,9 +676,8 @@ function startStreaming() {
       if (!ssReady) { ssReady=true; return; } // skip initial snapshot, already loaded
       const d=JSON.parse(e.data).data;
       if (!d) return;
-      const incoming = JSON.stringify({e:(d.employees||[]).map(x=>x.locationId+x.id).sort(), l:(d.locations||[]).map(x=>x.id).sort()});
-      const current  = JSON.stringify({e:(state.employees||[]).map(x=>x.locationId+x.id).sort(), l:(state.locations||[]).map(x=>x.id).sort()});
-      if (incoming === current) return; // no meaningful change, skip re-render
+      const toSig = arr => JSON.stringify([...(arr||[])].sort((a,b)=>a.id>b.id?1:-1).map(x=>x.id+'|'+(x.locationId||'')));
+      if (toSig(d.employees) === toSig(state.employees) && toSig(d.locations) === toSig(state.locations)) return;
       state={employees:d.employees||[],locations:d.locations||[]};
       render();
       setSyncStatus('connected');
@@ -938,13 +943,11 @@ async function updateEmployeeLocation(suffix) {
   if(!empHistory[empId]) empHistory[empId]=[];
   empHistory[empId].unshift({locName:loc.name,ts:Date.now()});
   empHistory[empId]=empHistory[empId].slice(0,5);
-  // Render immediately (optimistic) — don't wait for network
   render();
   document.getElementById('sel-location-m').value = '';
   document.getElementById('sel-location-d').value = '';
   playCheckin(); toast(emp.name+' → '+loc.name+(loc.isHome?' 🏠':'')+'!');
-  // Save in background
-  saveState(); saveHistory();
+  await saveState(); await saveHistory();
 }
 
 async function moveAll() {
@@ -961,13 +964,13 @@ async function moveAll() {
   render();
   closeModal('modal-moveall'); playCheckin();
   toast('Everyone moved to '+loc.name+(loc.isHome?' 🏠':'')+'!');
-  saveState(); saveHistory();
+  await saveState(); await saveHistory();
 }
 
 async function confirmClearAll() {
   if(!confirm('Clear all check-ins?')) return;
   state.employees.forEach(e=>e.locationId=null);
-  render(); toast('All check-ins cleared.'); saveState();
+  render(); toast('All check-ins cleared.'); await saveState();
 }
 
 async function sendAnnouncement() {
