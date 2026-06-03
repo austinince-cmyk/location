@@ -187,6 +187,7 @@
     padding: 8px 12px;
     transition: all 0.2s;
     animation: slideIn 0.25s ease;
+    position: relative;
   }
 
   @keyframes slideIn {
@@ -274,78 +275,59 @@
 
   select option { background: var(--surface2); }
 
-  /* ── GLOBAL HISTORY PANEL ── */
-  #history-panel {
-    background: var(--surface);
+  /* ── HOVER HISTORY TOOLTIP ── */
+  .chip-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #13151f;
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 22px 24px;
+    border-radius: 10px;
+    padding: 10px 14px;
+    width: 240px;
+    z-index: 300;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    pointer-events: none;
   }
 
-  #history-panel h2 {
-    font-size: 0.8rem;
+  .chip-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--border);
+  }
+
+  .employee-chip:hover .chip-tooltip { display: block; }
+
+  .tooltip-title {
+    font-size: 0.72rem;
     font-weight: 700;
-    margin-bottom: 16px;
     color: var(--accent);
-    letter-spacing: 0.3px;
     text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 8px;
+  }
+
+  .tooltip-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
   }
 
-  #history-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    max-height: 280px;
-    overflow-y: auto;
-  }
+  .tooltip-row:last-child { border-bottom: none; }
 
-  .history-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
-    background: var(--surface2);
-    border-radius: 10px;
-    font-size: 0.83rem;
-    animation: slideIn 0.3s ease;
-    border-left: 3px solid transparent;
-  }
-
-  .history-item.type-checkin { border-left-color: var(--accent2); }
-  .history-item.type-add    { border-left-color: var(--accent); }
-  .history-item.type-remove { border-left-color: var(--danger); }
-
-  .history-avatar {
-    width: 28px; height: 28px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 0.72rem;
-    flex-shrink: 0;
-    color: #fff;
-  }
-
-  .history-msg { flex: 1; color: var(--text); }
-  .history-msg strong { color: var(--accent2); }
-
-  .history-time {
-    font-size: 0.74rem;
-    color: var(--muted);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  .history-empty {
-    color: var(--muted);
-    font-size: 0.84rem;
-    text-align: center;
-    padding: 18px;
-  }
+  .tooltip-loc { color: var(--text); font-weight: 500; }
+  .tooltip-time { font-size: 0.72rem; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+  .tooltip-empty { font-size: 0.8rem; color: var(--muted); text-align: center; padding: 4px 0; }
 
   /* MODALS */
   .modal-backdrop {
@@ -520,16 +502,7 @@
     Add some locations and employees to get started!
   </p>
 
-  <!-- Global History -->
-  <section id="history-panel">
-    <h2>
-      <span>🕓 Global Activity History</span>
-      <button class="btn-ghost btn-sm" onclick="clearHistory()" style="font-size:0.72rem;opacity:0.6;">Clear</button>
-    </h2>
-    <div id="history-list">
-      <div class="history-empty">No activity yet.</div>
-    </div>
-  </section>
+
 </main>
 
 <!-- Toast container -->
@@ -589,7 +562,8 @@ if (!CONFIGURED) {
 const COLORS = ['#4f6ef7','#6ee7b7','#f59e0b','#ec4899','#8b5cf6','#10b981','#f97316','#06b6d4','#ef4444','#84cc16'];
 
 let state = { employees: [], locations: [] };
-let history = [];  // global activity log
+// empHistory: { [empId]: [{locName, ts}, ...] } — last 5 per employee
+let empHistory = {};
 
 // ─── Sync helpers ─────────────────────────────────────────────
 function setSyncStatus(status) {
@@ -673,19 +647,18 @@ async function load() {
   }
 }
 
-// ─── History: save/load ───────────────────────────────────────
-const MAX_HISTORY = 50;
+// ─── Per-employee checkin history ────────────────────────────
+const MAX_EMP_HISTORY = 5;
 
-async function addHistoryEntry(entry) {
-  // entry = { type, msg, empId, ts }
-  history.unshift(entry);
-  if (history.length > MAX_HISTORY) history = history.slice(0, MAX_HISTORY);
-  renderHistory();
+async function addCheckinHistory(empId, locName) {
+  if (!empHistory[empId]) empHistory[empId] = [];
+  empHistory[empId].unshift({ locName, ts: Date.now() });
+  if (empHistory[empId].length > MAX_EMP_HISTORY)
+    empHistory[empId] = empHistory[empId].slice(0, MAX_EMP_HISTORY);
 
   if (!CONFIGURED) return;
   try {
-    // Save as a trimmed list
-    await dbPut(DB_HISTORY_URL, history);
+    await dbPut(DB_HISTORY_URL, empHistory);
   } catch(e) {
     console.error('History save failed:', e);
   }
@@ -695,20 +668,12 @@ async function loadHistory() {
   if (!CONFIGURED) return;
   try {
     const data = await dbGet(DB_HISTORY_URL);
-    if (Array.isArray(data)) {
-      history = data;
-      renderHistory();
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      empHistory = data;
     }
   } catch(e) {
     console.error('History load failed:', e);
   }
-}
-
-async function clearHistory() {
-  history = [];
-  renderHistory();
-  if (!CONFIGURED) return;
-  try { await dbPut(DB_HISTORY_URL, []); } catch(e) {}
 }
 
 // ─── Real-time streaming via Firebase SSE ─────────────────────
@@ -760,9 +725,9 @@ function startStreaming() {
       const msg = JSON.parse(e.data);
       if (_ignoreNextHistoryEvent) { _ignoreNextHistoryEvent = false; return; }
       const data = msg.data;
-      if (Array.isArray(data)) {
-        history = data;
-        renderHistory();
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        empHistory = data;
+        render(); // re-render board to update tooltips
       }
     } catch(err) {}
   });
@@ -886,13 +851,26 @@ function renderBoard() {
     const isHome = loc.isHome;
 
     const chips = here.length
-      ? here.map(e => `
+      ? here.map(e => {
+          const eHist = empHistory[e.id] || [];
+          const tooltipRows = eHist.length
+            ? eHist.map(h => `
+                <div class="tooltip-row">
+                  <span class="tooltip-loc">📍 ${esc(h.locName)}</span>
+                  <span class="tooltip-time">${relativeTime(h.ts)}</span>
+                </div>`).join('')
+            : `<div class="tooltip-empty">No history yet</div>`;
+          return `
           <div class="employee-chip ${isHome ? 'home-chip' : ''}">
             <div class="avatar" style="background:${colorFor(e.id)}">${initials(e.name)}</div>
             <span class="chip-name">${esc(e.name)}</span>
             <div class="chip-status ${isHome ? 'home-dot' : ''}"></div>
-          </div>
-        `).join('')
+            <div class="chip-tooltip">
+              <div class="tooltip-title">📋 Recent Locations</div>
+              ${tooltipRows}
+            </div>
+          </div>`;
+        }).join('')
       : `<div class="empty-loc">No one here</div>`;
 
     return `
@@ -970,23 +948,6 @@ function renderLocationList() {
   `).join('');
 }
 
-function renderHistory() {
-  const list = document.getElementById('history-list');
-  if (!history.length) {
-    list.innerHTML = '<div class="history-empty">No activity yet.</div>';
-    return;
-  }
-  list.innerHTML = history.map(h => `
-    <div class="history-item type-${h.type}">
-      ${h.empId
-        ? `<div class="history-avatar" style="background:${colorFor(h.empId)}">${h.initials || '?'}</div>`
-        : `<div class="history-avatar" style="background:var(--surface2);color:var(--muted);font-size:1rem;">📍</div>`
-      }
-      <span class="history-msg">${h.msg}</span>
-      <span class="history-time">${relativeTime(h.ts)}</span>
-    </div>
-  `).join('');
-}
 
 // ─── Actions ──────────────────────────────────────────────────
 async function addEmployee() {
@@ -999,7 +960,6 @@ async function addEmployee() {
   const emp = { id: uid(), name, locationId: null };
   state.employees.push(emp);
   await save();
-  await addHistoryEntry({ type: 'add', msg: `<strong>${esc(name)}</strong> was added to the team.`, empId: emp.id, initials: initials(name), ts: Date.now() });
   render();
   input.value = '';
   playAdd();
@@ -1011,7 +971,6 @@ async function removeEmployee(id) {
   state.employees = state.employees.filter(e => e.id !== id);
   await save();
   if (emp) {
-    await addHistoryEntry({ type: 'remove', msg: `<strong>${esc(emp.name)}</strong> was removed from the team.`, empId: emp.id, initials: initials(emp.name), ts: Date.now() });
   }
   render();
   playRemove();
@@ -1028,7 +987,6 @@ async function addLocation() {
   const isFirst = state.locations.length === 0;
   state.locations.push({ id: uid(), name, isHome: isFirst });
   await save();
-  await addHistoryEntry({ type: 'add', msg: `Location <strong>${esc(name)}</strong> was added${isFirst ? ' and set as Home 🏠' : ''}.`, empId: null, ts: Date.now() });
   render();
   input.value = '';
   playAdd();
@@ -1041,7 +999,6 @@ async function removeLocation(id) {
   state.locations = state.locations.filter(l => l.id !== id);
   await save();
   if (loc) {
-    await addHistoryEntry({ type: 'remove', msg: `Location <strong>${esc(loc.name)}</strong> was removed.`, empId: null, ts: Date.now() });
   }
   render();
   playRemove();
@@ -1053,7 +1010,6 @@ async function setHome(id) {
   await save();
   const loc = state.locations.find(l => l.id === id);
   if (loc) {
-    await addHistoryEntry({ type: 'add', msg: `<strong>${esc(loc.name)}</strong> was set as the Home location 🏠.`, empId: null, ts: Date.now() });
     toast(`${loc.name} is now Home 🏠`);
   }
   render();
@@ -1069,18 +1025,9 @@ async function updateEmployeeLocation() {
 
   if (emp && emp.locationId === locId) { toast(`${emp.name} is already at ${loc.name}.`); return; }
 
-  const prevLoc = state.locations.find(l => l.id === emp.locationId);
   emp.locationId = locId;
   await save();
-
-  const fromStr = prevLoc ? ` from <strong>${esc(prevLoc.name)}</strong>` : '';
-  await addHistoryEntry({
-    type: 'checkin',
-    msg: `<strong>${esc(emp.name)}</strong> checked in at <strong>${esc(loc.name)}</strong>${loc.isHome ? ' 🏠' : ''}${fromStr}.`,
-    empId: emp.id,
-    initials: initials(emp.name),
-    ts: Date.now()
-  });
+  await addCheckinHistory(emp.id, loc.name);
 
   render();
   playCheckin();
@@ -1124,7 +1071,6 @@ function esc(str) {
   await load();
   await loadHistory();
   render();
-  renderHistory();
   startStreaming();
 })();
 </script>
