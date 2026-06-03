@@ -340,6 +340,23 @@ textarea:focus { outline: none; border-color: var(--accent); }
 .ps-empty { color: var(--muted); font-size: 0.82rem; }
 .ps-close { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; font-size: 0.88rem; font-weight: 700; width: 100%; cursor: pointer; color: var(--text); }
 .ps-close:active { background: var(--surface3); }
+.ps-checkout { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; font-size: 0.88rem; font-weight: 700; width: 100%; cursor: pointer; color: var(--danger); }
+.ps-checkout:active { background: var(--surface3); }
+.ps-footer { display: flex; gap: 8px; }
+.ps-footer button { flex: 1; }
+
+/* In-route indicator */
+.person-bubble { position: relative; }
+.inroute-badge {
+  position: absolute; top: -4px; right: -4px;
+  font-size: 0.7rem; line-height: 1;
+  background: var(--surface); border-radius: 50%;
+  width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border);
+  animation: routePulse 1.5s ease-in-out infinite;
+}
+@keyframes routePulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.18); } }
 
 /* ── TOAST ─────────────────────────────────────────────────── */
 #toast-container { position: fixed; top: 68px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 7px; z-index: 500; pointer-events: none; width: 92%; max-width: 320px; }
@@ -458,7 +475,10 @@ textarea:focus { outline: none; border-color: var(--accent); }
     </div>
     <div class="ps-history-title">Recent Locations</div>
     <div class="ps-rows" id="ps-rows"></div>
-    <button class="ps-close" onclick="closePersonSheet()">Close</button>
+    <div class="ps-footer">
+      <button class="ps-close" onclick="closePersonSheet()">Close</button>
+      <button class="ps-checkout" id="ps-checkout" onclick="checkOutEmployee()" style="display:none;">✕ Check Out</button>
+    </div>
   </div>
 </div>
 
@@ -569,6 +589,7 @@ const DB = {
   state:        FIREBASE_URL + '/state.json',
   empHistory:   FIREBASE_URL + '/empHistory.json',
   announcement: FIREBASE_URL + '/announcement.json',
+  inroute:      FIREBASE_URL + '/inroute.json',
 };
 
 function setSyncStatus(s) {
@@ -633,6 +654,8 @@ function isManager() {
 let state = { employees: [], locations: [] };
 let empHistory = {};
 let announcement = null;
+let inroute = {};  // { empId: checkinTimestamp } — cleared after 5 min
+const INROUTE_MS = 5 * 60 * 1000; // 5 minutes
 
 // ════════════════════════════════════════════════════════════
 //  LOAD / SAVE
@@ -640,10 +663,11 @@ let announcement = null;
 async function loadAll() {
   try {
     setSyncStatus('');
-    const [s, h, a] = await Promise.all([fbGet(DB.state), fbGet(DB.empHistory), fbGet(DB.announcement)]);
+    const [s, h, a, ir] = await Promise.all([fbGet(DB.state), fbGet(DB.empHistory), fbGet(DB.announcement), fbGet(DB.inroute)]);
     if (s) state = { employees: s.employees||[], locations: s.locations||[] };
     if (h && typeof h==='object' && !Array.isArray(h)) empHistory = h;
     if (a && a.msg) announcement = a;
+    if (ir && typeof ir==='object') inroute = ir;
     setSyncStatus('connected');
   } catch(e) {
     setSyncStatus('error');
@@ -671,6 +695,9 @@ async function saveHistory() {
 }
 async function saveAnnouncement() {
   try { await fbPut(DB.announcement, announcement||null); } catch(e){}
+}
+async function saveInroute() {
+  try { await fbPut(DB.inroute, inroute); } catch(e){}
 }
 
 // ════════════════════════════════════════════════════════════
@@ -710,6 +737,18 @@ function startStreaming() {
   const as = new EventSource(FIREBASE_URL+'/announcement.json?accept=text/event-stream');
   as.addEventListener('put', e => {
     try { const d=JSON.parse(e.data).data; announcement=(d&&d.msg)?d:null; renderAnnouncement(); } catch(err){}
+  });
+
+  // Inroute stream
+  const ir = new EventSource(FIREBASE_URL+'/inroute.json?accept=text/event-stream');
+  let irReady = false;
+  ir.addEventListener('put', e => {
+    try {
+      if (!irReady) { irReady=true; return; }
+      const d=JSON.parse(e.data).data;
+      inroute = (d && typeof d==='object') ? d : {};
+      renderBoard();
+    } catch(err){}
   });
 }
 
@@ -773,6 +812,7 @@ function renderBoard() {
             : `<div class="tip-empty">No history yet</div>`;
           // Store tooltip data as data attributes, rendered via JS hover
           const histJson = JSON.stringify(hist).replace(/"/g, '&quot;');
+          const isInroute = inroute[e.id] && (Date.now() - inroute[e.id]) < INROUTE_MS;
           return `<div class="person-bubble" 
             data-empid="${e.id}"
             data-name="${esc(e.name)}"
@@ -780,6 +820,7 @@ function renderBoard() {
             onclick="openPersonSheet('${e.id}')" tabindex="0">
             <div class="person-avatar" style="background:${colorFor(e.id)}">${initials(e.name)}</div>
             <div class="person-name">${esc(e.name)}</div>
+            ${isInroute ? '<div class="inroute-badge">🚗</div>' : ''}
           </div>`;
         }).join('')
       : `<div class="empty-loc">empty</div>`;
@@ -872,19 +913,31 @@ function renderAnnouncement() {
 // ════════════════════════════════════════════════════════════
 //  PERSON DETAIL SHEET (mobile tap)
 // ════════════════════════════════════════════════════════════
+let _personSheetEmpId = null;
+
 function openPersonSheet(empId) {
   const e=state.employees.find(x=>x.id===empId); if(!e) return;
+  _personSheetEmpId = empId;
   const loc=state.locations.find(l=>l.id===e.locationId);
   const hist=(empHistory[empId]||[]).slice(0,5);
+  const isInroute = inroute[empId] && (Date.now() - inroute[empId]) < INROUTE_MS;
 
   document.getElementById('ps-avatar').textContent=initials(e.name);
   document.getElementById('ps-avatar').style.background=colorFor(e.id);
   document.getElementById('ps-name').textContent=e.name;
-  document.getElementById('ps-loc').textContent=loc?'Currently at '+loc.name:'Not checked in';
+
+  const locText = loc
+    ? (isInroute ? '🚗 En route to '+loc.name : '📍 '+loc.name)
+    : 'Not checked in';
+  document.getElementById('ps-loc').textContent=locText;
 
   document.getElementById('ps-rows').innerHTML = hist.length
     ? hist.map(h=>`<div class="ps-row"><span class="ps-row-loc">📍 ${esc(h.locName)}</span><span class="ps-row-time">${relTime(h.ts)}</span></div>`).join('')
     : '<div class="ps-empty">No history yet</div>';
+
+  // Show checkout button only if they have a location
+  const checkoutBtn = document.getElementById('ps-checkout');
+  checkoutBtn.style.display = loc ? 'block' : 'none';
 
   document.getElementById('person-sheet').classList.add('open');
 }
@@ -899,6 +952,17 @@ document.getElementById('person-sheet').addEventListener('click', e => {
 // ════════════════════════════════════════════════════════════
 //  ACTIONS
 // ════════════════════════════════════════════════════════════
+async function checkOutEmployee() {
+  const empId = _personSheetEmpId; if(!empId) return;
+  const emp = state.employees.find(e=>e.id===empId); if(!emp) return;
+  emp.locationId = null;
+  delete inroute[empId];
+  render();
+  closePersonSheet();
+  toast(emp.name+' checked out.');
+  await saveState(); await saveInroute();
+}
+
 async function addEmployee() {
   const inp=document.getElementById('new-employee-name');
   const name=inp.value.trim(); if(!name) return;
@@ -952,11 +1016,20 @@ async function updateEmployeeLocation(suffix) {
   if(!empHistory[empId]) empHistory[empId]=[];
   empHistory[empId].unshift({locName:loc.name,ts:Date.now()});
   empHistory[empId]=empHistory[empId].slice(0,5);
+  inroute[empId] = Date.now();
   render();
   document.getElementById('sel-location-m').value = '';
   document.getElementById('sel-location-d').value = '';
   playCheckin(); toast(emp.name+' → '+loc.name+(loc.isHome?' 🏠':'')+'!');
-  await saveState(); await saveHistory();
+  await saveState(); await saveHistory(); await saveInroute();
+  // Auto-clear inroute after 5 min
+  setTimeout(async () => {
+    if (inroute[empId]) {
+      delete inroute[empId];
+      await saveInroute();
+      renderBoard();
+    }
+  }, INROUTE_MS);
 }
 
 async function moveAll() {
