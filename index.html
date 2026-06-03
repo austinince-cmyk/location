@@ -2,520 +2,336 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Team Tracker</title>
-
-<!--
-  ╔══════════════════════════════════════════════════════════════╗
-  ║  GLOBAL HISTORY SETUP — Firebase Realtime Database           ║
-  ║                                                              ║
-  ║  1. Go to https://console.firebase.google.com/               ║
-  ║  2. Create a new project (free)                              ║
-  ║  3. Build → Realtime Database → Create Database              ║
-  ║  4. Start in TEST MODE (allows all reads/writes)             ║
-  ║  5. Copy your database URL (looks like:                      ║
-  ║     https://your-project-default-rtdb.firebaseio.com)        ║
-  ║  6. Replace FIREBASE_URL below with your database URL        ║
-  ╚══════════════════════════════════════════════════════════════╝
--->
 <script>
   const FIREBASE_URL = 'https://team-tracker-39b49-default-rtdb.firebaseio.com';
-  // ↑↑↑ REPLACE THIS WITH YOUR FIREBASE DATABASE URL ↑↑↑
 </script>
-
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --surface2: #22263a;
-    --border: #2e3354;
-    --accent: #4f6ef7;
-    --accent2: #6ee7b7;
-    --home: #f59e0b;
-    --danger: #ef4444;
-    --text: #e2e8f0;
-    --muted: #64748b;
-    --radius: 14px;
-  }
-
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* HEADER */
-  header {
-    padding: 18px 28px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-
-  header h1 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.3px; }
-  header h1 span { color: var(--accent); }
-
-  .header-actions { display: flex; gap: 10px; align-items: center; }
-
-  /* SYNC INDICATOR */
-  .sync-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--muted);
-    transition: background 0.3s;
-    flex-shrink: 0;
-  }
-  .sync-dot.connected { background: var(--accent2); box-shadow: 0 0 6px rgba(110,231,183,0.5); }
-  .sync-dot.syncing { background: var(--home); animation: pulse 0.6s infinite alternate; }
-  .sync-dot.error { background: var(--danger); }
-
-  @keyframes pulse { from { opacity: 1; } to { opacity: 0.4; } }
-
-  .sync-label { font-size: 0.75rem; color: var(--muted); }
-
-  /* BUTTONS */
-  button {
-    cursor: pointer;
-    border: none;
-    font-family: inherit;
-    font-size: 0.85rem;
-    font-weight: 600;
-    border-radius: 8px;
-    padding: 8px 14px;
-    transition: all 0.15s;
-  }
-
-  .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { background: #3a56d4; }
-
-  .btn-ghost {
-    background: var(--surface2);
-    color: var(--text);
-    border: 1px solid var(--border);
-  }
-  .btn-ghost:hover { background: var(--border); }
-
-  .btn-danger { background: var(--danger); color: #fff; }
-  .btn-danger:hover { background: #c53030; }
-
-  .btn-sm { padding: 5px 10px; font-size: 0.78rem; border-radius: 6px; }
-
-  /* MAIN LAYOUT */
-  main { flex: 1; padding: 28px; display: flex; flex-direction: column; gap: 28px; }
-
-  /* LOCATION BOARD */
-  #board {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 18px;
-  }
-
-  .location-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    transition: box-shadow 0.2s;
-    position: relative;
-  }
-
-  .location-card.is-home {
-    border-color: var(--home);
-    box-shadow: 0 0 0 1px var(--home), 0 0 24px rgba(245,158,11,0.12);
-  }
-
-  .location-card:hover { box-shadow: 0 4px 24px rgba(0,0,0,0.3); }
-
-  .loc-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-
-  .loc-name {
-    font-size: 1rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .home-badge {
-    font-size: 0.65rem;
-    font-weight: 700;
-    background: var(--home);
-    color: #000;
-    padding: 2px 7px;
-    border-radius: 20px;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-  }
-
-  .loc-count {
-    font-size: 0.78rem;
-    color: var(--muted);
-    white-space: nowrap;
-  }
-
-  .employee-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-height: 48px;
-  }
-
-  .employee-chip {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--surface2);
-    border-radius: 10px;
-    padding: 8px 12px;
-    transition: all 0.2s;
-    animation: slideIn 0.25s ease;
-    position: relative;
-  }
-
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateY(-6px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  .employee-chip.home-chip { background: rgba(245,158,11,0.12); }
-
-  .avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 0.8rem;
-    flex-shrink: 0;
-    color: #fff;
-  }
-
-  .chip-name { flex: 1; font-size: 0.88rem; font-weight: 500; }
-
-  .chip-status {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--accent2);
-    flex-shrink: 0;
-  }
-
-  .chip-status.home-dot { background: var(--home); }
-
-  .empty-loc {
-    color: var(--muted);
-    font-size: 0.82rem;
-    text-align: center;
-    padding: 10px 0;
-  }
-
-  /* SELF-SERVICE PANEL */
-  #self-service {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 22px 24px;
-  }
-
-  #self-service h2 {
-    font-size: 0.8rem;
-    font-weight: 700;
-    margin-bottom: 16px;
-    color: var(--accent2);
-    letter-spacing: 0.3px;
-    text-transform: uppercase;
-  }
-
-  .self-form {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    align-items: flex-end;
-  }
-
-  .form-group { display: flex; flex-direction: column; gap: 6px; }
-
-  label { font-size: 0.78rem; color: var(--muted); font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; }
-
-  select, input[type="text"] {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    padding: 9px 12px;
-    font-size: 0.88rem;
-    font-family: inherit;
-    min-width: 180px;
-    transition: border-color 0.15s;
-  }
-
-  select:focus, input:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-
-  select option { background: var(--surface2); }
-
-  /* ── HOVER HISTORY TOOLTIP ── */
-  .chip-tooltip {
-    display: none;
-    position: absolute;
-    bottom: calc(100% + 10px);
-    left: 50%;
-    transform: translateX(-50%);
-    background: #13151f;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 14px;
-    width: 240px;
-    z-index: 300;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-    pointer-events: none;
-  }
-
-  .chip-tooltip::after {
-    content: '';
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 6px solid transparent;
-    border-top-color: var(--border);
-  }
-
-  .employee-chip:hover .chip-tooltip { display: block; }
-
-  .tooltip-title {
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: var(--accent);
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    margin-bottom: 8px;
-  }
-
-  .tooltip-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 5px 0;
-    border-bottom: 1px solid var(--border);
-    font-size: 0.8rem;
-  }
-
-  .tooltip-row:last-child { border-bottom: none; }
-
-  .tooltip-loc { color: var(--text); font-weight: 500; }
-  .tooltip-time { font-size: 0.72rem; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
-  .tooltip-empty { font-size: 0.8rem; color: var(--muted); text-align: center; padding: 4px 0; }
-
-  /* MODALS */
-  .modal-backdrop {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.65);
-    z-index: 200;
-    align-items: center;
-    justify-content: center;
-  }
-  .modal-backdrop.open { display: flex; }
-
-  .modal {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 28px;
-    width: 100%;
-    max-width: 420px;
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    box-shadow: 0 24px 60px rgba(0,0,0,0.5);
-    animation: popIn 0.2s ease;
-  }
-
-  @keyframes popIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to   { opacity: 1; transform: scale(1); }
-  }
-
-  .modal h2 { font-size: 1.1rem; font-weight: 700; }
-
-  .modal-body { display: flex; flex-direction: column; gap: 12px; }
-
-  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; }
-
-  /* MANAGE LIST */
-  .manage-list { display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; }
-
-  .manage-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: var(--surface2);
-    border-radius: 8px;
-    padding: 10px 14px;
-    gap: 10px;
-  }
-
-  .manage-item-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
-  .manage-item-name { font-size: 0.88rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-  /* TOAST */
-  #toast-container {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    z-index: 500;
-    pointer-events: none;
-  }
-
-  .toast {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--accent2);
-    border-radius: 10px;
-    padding: 12px 18px;
-    font-size: 0.85rem;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-    animation: toastIn 0.3s ease forwards;
-    max-width: 300px;
-  }
-
-  @keyframes toastIn {
-    from { opacity: 0; transform: translateX(20px); }
-    to   { opacity: 1; transform: translateX(0); }
-  }
-
-  .toast.fade-out { animation: toastOut 0.4s ease forwards; }
-
-  @keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
-
-  .home-star {
-    font-size: 1.1rem;
-    cursor: pointer;
-    opacity: 0.4;
-    transition: opacity 0.15s, transform 0.15s;
-    line-height: 1;
-  }
-  .home-star.active { opacity: 1; }
-  .home-star:hover { transform: scale(1.2); }
-
-  .no-employees {
-    color: var(--muted);
-    font-size: 0.85rem;
-    text-align: center;
-    padding: 12px;
-  }
-
-  .loc-icon { font-size: 1.2rem; }
-
-  /* Config warning banner */
-  #config-warning {
-    background: rgba(239,68,68,0.12);
-    border: 1px solid var(--danger);
-    border-radius: 10px;
-    padding: 14px 20px;
-    font-size: 0.85rem;
-    display: none;
-  }
-  #config-warning.show { display: block; }
-  #config-warning a { color: var(--accent); }
-
-  @media (max-width: 600px) {
-    header { padding: 14px 16px; }
-    main { padding: 16px; gap: 16px; }
-    .self-form { flex-direction: column; }
-    select, input[type="text"] { min-width: 100%; }
-  }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #22263a;
+  --border: #2e3354;
+  --accent: #4f6ef7;
+  --accent2: #6ee7b7;
+  --home: #f59e0b;
+  --danger: #ef4444;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --radius: 16px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html, body { height: 100%; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overscroll-behavior: none;
+}
+
+/* ── HEADER ─────────────────────────────────────────────────── */
+header {
+  padding: 14px 16px;
+  padding-top: max(14px, env(safe-area-inset-top));
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky; top: 0; z-index: 100;
+}
+header h1 { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.4px; }
+header h1 span { color: var(--accent); }
+.header-right { display: flex; align-items: center; gap: 10px; }
+
+.sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; transition: background 0.3s; }
+.sync-dot.connected { background: var(--accent2); box-shadow: 0 0 5px rgba(110,231,183,0.6); }
+.sync-dot.syncing { background: var(--home); animation: blink 0.6s infinite alternate; }
+.sync-dot.error { background: var(--danger); }
+@keyframes blink { to { opacity: 0.3; } }
+
+.user-pill {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 5px 12px 5px 7px;
+  font-size: 0.78rem; font-weight: 600; cursor: pointer;
+  transition: background 0.15s;
+}
+.user-pill:active { background: var(--border); }
+.u-dot { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 800; color: #fff; }
+
+/* ── BUTTONS ─────────────────────────────────────────────────── */
+button {
+  cursor: pointer; border: none; font-family: inherit;
+  font-size: 0.9rem; font-weight: 700; border-radius: 12px;
+  padding: 14px 20px; transition: all 0.15s; touch-action: manipulation;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:active { background: #3a56d4; transform: scale(0.97); }
+.btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-ghost:active { background: var(--border); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:active { background: #b91c1c; }
+.btn-warning { background: var(--home); color: #000; font-weight: 800; }
+.btn-warning:active { background: #d97706; }
+.btn-sm { padding: 8px 14px; font-size: 0.8rem; border-radius: 8px; }
+.btn-full { width: 100%; display: block; text-align: center; }
+
+/* ── MAIN ────────────────────────────────────────────────────── */
+main {
+  flex: 1; padding: 16px;
+  padding-bottom: calc(130px + var(--safe-bottom));
+  display: flex; flex-direction: column; gap: 14px;
+  overflow-y: auto;
+}
+
+/* ── ANNOUNCEMENT ────────────────────────────────────────────── */
+#announcement-bar {
+  background: linear-gradient(135deg, rgba(79,110,247,0.15), rgba(110,231,183,0.08));
+  border: 1px solid var(--accent); border-radius: var(--radius);
+  padding: 14px 16px; display: none; gap: 12px; align-items: flex-start;
+}
+#announcement-bar.visible { display: flex; }
+.ann-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 1px; }
+.ann-body { flex: 1; }
+.ann-label { font-size: 0.68rem; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.ann-msg { font-size: 0.88rem; line-height: 1.45; }
+.ann-dismiss { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 8px 14px; font-size: 0.78rem; font-weight: 700; cursor: pointer; flex-shrink: 0; touch-action: manipulation; }
+.ann-dismiss:active { background: #3a56d4; }
+
+/* ── BOARD ───────────────────────────────────────────────────── */
+#board { display: flex; flex-direction: column; gap: 10px; }
+
+.location-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px;
+}
+.location-card.is-home { border-color: var(--home); box-shadow: 0 0 20px rgba(245,158,11,0.1); }
+
+.loc-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.loc-name { font-size: 0.95rem; font-weight: 800; display: flex; align-items: center; gap: 7px; }
+.loc-count { font-size: 0.75rem; color: var(--muted); background: var(--surface2); padding: 3px 8px; border-radius: 20px; }
+.home-badge { font-size: 0.6rem; font-weight: 800; background: var(--home); color: #000; padding: 2px 7px; border-radius: 20px; letter-spacing: 0.5px; text-transform: uppercase; }
+
+.employee-list { display: flex; flex-direction: column; gap: 6px; }
+
+.employee-chip {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface2); border-radius: 10px; padding: 10px 12px;
+  animation: slideIn 0.22s ease; position: relative;
+}
+.employee-chip.home-chip { background: rgba(245,158,11,0.1); }
+@keyframes slideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+.avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.78rem; flex-shrink: 0; color: #fff; }
+.chip-name { flex: 1; font-size: 0.88rem; font-weight: 600; }
+.chip-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent2); flex-shrink: 0; }
+.chip-dot.home-dot { background: var(--home); }
+
+/* Tooltip */
+.chip-tooltip {
+  display: none; position: absolute; bottom: calc(100% + 8px); left: 50%;
+  transform: translateX(-50%); background: #0d0f18; border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 14px; width: 220px; z-index: 300;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6); pointer-events: none;
+}
+.chip-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: var(--border); }
+.employee-chip:hover .chip-tooltip { display: block; }
+.tip-title { font-size: 0.68rem; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 7px; }
+.tip-row { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--border); font-size: 0.78rem; }
+.tip-row:last-child { border: none; }
+.tip-loc { color: var(--text); font-weight: 500; }
+.tip-time { color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+.tip-empty { font-size: 0.78rem; color: var(--muted); text-align: center; padding: 2px 0; }
+
+.empty-loc { color: var(--muted); font-size: 0.82rem; text-align: center; padding: 8px 0; }
+
+/* ── BOTTOM BAR ──────────────────────────────────────────────── */
+#bottom-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--surface); border-top: 1px solid var(--border);
+  padding: 10px 16px; padding-bottom: calc(10px + var(--safe-bottom));
+  z-index: 90; display: flex; flex-direction: column; gap: 8px;
+}
+.checkin-selects { display: flex; gap: 8px; }
+.checkin-selects select { flex: 1; min-width: 0; }
+.bottom-actions { display: flex; gap: 8px; }
+.bottom-actions button { flex: 1; padding: 12px; font-size: 0.85rem; }
+
+select, input[type="text"] {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--text); padding: 12px 14px;
+  font-size: 0.88rem; font-family: inherit; width: 100%;
+  -webkit-appearance: none; appearance: none; transition: border-color 0.15s;
+}
+select:focus, input:focus { outline: none; border-color: var(--accent); }
+select option { background: var(--surface2); }
+
+/* ── NAME SCREEN ─────────────────────────────────────────────── */
+#name-screen {
+  position: fixed; inset: 0; background: var(--bg);
+  z-index: 400; display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+.name-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 32px 24px; width: 100%; max-width: 340px;
+  display: flex; flex-direction: column; gap: 20px; text-align: center;
+}
+.name-logo { font-size: 2.5rem; }
+.name-title { font-size: 1.4rem; font-weight: 800; }
+.name-sub { font-size: 0.85rem; color: var(--muted); line-height: 1.5; }
+.name-field { display: flex; flex-direction: column; gap: 8px; text-align: left; }
+.name-field label { font-size: 0.75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+
+/* ── MODALS ──────────────────────────────────────────────────── */
+.modal-backdrop {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7); z-index: 200;
+  align-items: flex-end; justify-content: center;
+}
+.modal-backdrop.open { display: flex; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px 20px 0 0;
+  padding: 20px; padding-bottom: calc(20px + var(--safe-bottom));
+  width: 100%; max-width: 500px;
+  display: flex; flex-direction: column; gap: 16px;
+  max-height: 85vh; overflow-y: auto;
+  animation: slideUp 0.25s ease;
+}
+@keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+.modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto -4px; flex-shrink: 0; }
+.modal h2 { font-size: 1.05rem; font-weight: 800; }
+.modal-body { display: flex; flex-direction: column; gap: 10px; }
+.modal-footer { display: flex; gap: 10px; }
+.modal-footer button { flex: 1; }
+
+.manage-list { display: flex; flex-direction: column; gap: 8px; }
+.manage-item { display: flex; align-items: center; justify-content: space-between; background: var(--surface2); border-radius: 10px; padding: 12px 14px; gap: 10px; }
+.manage-item-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.manage-item-name { font-size: 0.88rem; font-weight: 600; }
+.manage-item-sub { font-size: 0.74rem; color: var(--muted); }
+
+.home-star { font-size: 1.1rem; cursor: pointer; opacity: 0.35; transition: opacity 0.15s, transform 0.15s; }
+.home-star.active { opacity: 1; }
+.home-star:active { transform: scale(1.3); }
+
+textarea {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+  color: var(--text); padding: 12px 14px; font-size: 0.88rem; font-family: inherit;
+  width: 100%; min-height: 100px; resize: none;
+}
+textarea:focus { outline: none; border-color: var(--accent); }
+
+.no-items { color: var(--muted); font-size: 0.84rem; text-align: center; padding: 14px; }
+#empty-msg { color: var(--muted); text-align: center; padding: 40px 0; font-size: 0.9rem; line-height: 1.8; }
+
+/* ── TOAST ───────────────────────────────────────────────────── */
+#toast-container { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 500; pointer-events: none; width: 90%; max-width: 320px; }
+.toast { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent2); border-radius: 12px; padding: 11px 16px; font-size: 0.84rem; box-shadow: 0 8px 24px rgba(0,0,0,0.4); animation: toastIn 0.25s ease; text-align: center; width: 100%; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.toast.fade-out { animation: toastOut 0.25s ease forwards; }
+@keyframes toastOut { to { opacity: 0; transform: translateY(-6px); } }
+
+.section-divider { height: 1px; background: var(--border); margin: 2px 0; }
 </style>
 </head>
 <body>
 
+<!-- ══ NAME SCREEN ════════════════════════════════════════════ -->
+<div id="name-screen">
+  <div class="name-card">
+    <div class="name-logo">📍</div>
+    <div class="name-title">Team Tracker</div>
+    <div class="name-sub">Enter your name to get started.</div>
+    <div class="name-field">
+      <label>Your name</label>
+      <input type="text" id="input-name" placeholder="e.g. Austin" autocomplete="name" autocorrect="off">
+    </div>
+    <button class="btn-primary btn-full" onclick="submitName()">Let's Go →</button>
+  </div>
+</div>
+
+<!-- ══ APP ════════════════════════════════════════════════════ -->
 <header>
   <h1>Team <span>Tracker</span></h1>
-  <div class="header-actions">
-    <div class="sync-dot" id="sync-dot" title="Connection status"></div>
-    <span class="sync-label" id="sync-label">Connecting…</span>
-    <button class="btn-ghost" onclick="openModal('modal-locations')">📍 Locations</button>
-    <button class="btn-primary" onclick="openModal('modal-employees')">👥 Employees</button>
+  <div class="header-right">
+    <div class="sync-dot" id="sync-dot"></div>
+    <div class="user-pill" onclick="openModal('modal-account')">
+      <div class="u-dot" id="user-avatar"></div>
+      <span id="user-name-label"></span>
+    </div>
   </div>
 </header>
 
 <main>
-  <!-- Config warning -->
-  <div id="config-warning">
-    ⚠️ <strong>Firebase not configured.</strong> Replace <code>FIREBASE_URL</code> at the top of the file with your database URL.
-    See the setup comments in the HTML source, or visit
-    <a href="https://console.firebase.google.com/" target="_blank">console.firebase.google.com</a>.
-    <br><br>Running in <strong>local-only mode</strong> until configured — data won't sync between users.
-  </div>
-
-  <!-- Self-service update bar -->
-  <section id="self-service">
-    <h2>📣 Update Your Location</h2>
-    <div class="self-form">
-      <div class="form-group">
-        <label>Who are you?</label>
-        <select id="sel-employee">
-          <option value="">— Select employee —</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Where are you?</label>
-        <select id="sel-location">
-          <option value="">— Select location —</option>
-        </select>
-      </div>
-      <button class="btn-primary" onclick="updateEmployeeLocation()" style="align-self:flex-end;padding:9px 20px;">Check In</button>
+  <!-- Announcement -->
+  <div id="announcement-bar">
+    <div class="ann-icon">📢</div>
+    <div class="ann-body">
+      <div class="ann-label">Announcement</div>
+      <div class="ann-msg" id="ann-text"></div>
     </div>
-  </section>
+    <button class="ann-dismiss" onclick="dismissAnnouncement()">Got it</button>
+  </div>
 
   <!-- Board -->
   <div id="board"></div>
-
-  <p id="empty-msg" style="color:var(--muted);text-align:center;display:none;">
-    Add some locations and employees to get started!
-  </p>
-
-
+  <div id="empty-msg" style="display:none;">
+    No locations yet.<br>
+    <span style="color:var(--accent);font-size:0.82rem;">Tap ⚙️ Manage below to add some.</span>
+  </div>
 </main>
 
-<!-- Toast container -->
+<!-- ══ BOTTOM BAR ════════════════════════════════════════════ -->
+<div id="bottom-bar">
+  <div class="checkin-selects">
+    <select id="sel-employee"><option value="">Who are you?</option></select>
+    <select id="sel-location"><option value="">Where?</option></select>
+  </div>
+  <div class="bottom-actions">
+    <button class="btn-primary" onclick="updateEmployeeLocation()">✓ Check In</button>
+    <button class="btn-ghost" onclick="openModal('modal-manage')">⚙️ Manage</button>
+  </div>
+</div>
+
+<!-- Toast -->
 <div id="toast-container"></div>
 
-<!-- ===================== MODAL: Employees ===================== -->
+<!-- ══ MODAL: Manage ═════════════════════════════════════════ -->
+<div class="modal-backdrop" id="modal-manage">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>⚙️ Manage</h2>
+    <div class="modal-body">
+      <button class="btn-ghost btn-full" onclick="closeModal('modal-manage');openModal('modal-employees')">👥 Employees</button>
+      <button class="btn-ghost btn-full" onclick="closeModal('modal-manage');openModal('modal-locations')">📍 Locations</button>
+      <button class="btn-ghost btn-full" onclick="closeModal('modal-manage');openModal('modal-announce')">📢 Announcement</button>
+      <div class="section-divider"></div>
+      <button class="btn-warning btn-full" onclick="closeModal('modal-manage');openModal('modal-moveall')">🚀 Move Everyone</button>
+      <button class="btn-danger btn-full" onclick="closeModal('modal-manage');confirmClearAll()">🗑 Clear All Check-Ins</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('modal-manage')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Employees ══════════════════════════════════════ -->
 <div class="modal-backdrop" id="modal-employees">
   <div class="modal">
-    <h2>👥 Manage Employees</h2>
+    <div class="modal-handle"></div>
+    <h2>👥 Employees</h2>
     <div class="modal-body">
       <div style="display:flex;gap:8px;">
-        <input type="text" id="new-employee-name" placeholder="Employee name" style="flex:1;" onkeydown="if(event.key==='Enter') addEmployee()">
-        <button class="btn-primary" onclick="addEmployee()">Add</button>
+        <input type="text" id="new-employee-name" placeholder="Employee name" style="flex:1;" onkeydown="if(event.key==='Enter')addEmployee()">
+        <button class="btn-primary btn-sm" onclick="addEmployee()">Add</button>
       </div>
       <div class="manage-list" id="employee-manage-list"></div>
     </div>
@@ -525,16 +341,17 @@
   </div>
 </div>
 
-<!-- ===================== MODAL: Locations ===================== -->
+<!-- ══ MODAL: Locations ══════════════════════════════════════ -->
 <div class="modal-backdrop" id="modal-locations">
   <div class="modal">
-    <h2>📍 Manage Locations</h2>
+    <div class="modal-handle"></div>
+    <h2>📍 Locations</h2>
     <div class="modal-body">
       <div style="display:flex;gap:8px;">
-        <input type="text" id="new-location-name" placeholder="Location name" style="flex:1;" onkeydown="if(event.key==='Enter') addLocation()">
-        <button class="btn-primary" onclick="addLocation()">Add</button>
+        <input type="text" id="new-location-name" placeholder="Location name" style="flex:1;" onkeydown="if(event.key==='Enter')addLocation()">
+        <button class="btn-primary btn-sm" onclick="addLocation()">Add</button>
       </div>
-      <p style="font-size:0.78rem;color:var(--muted);">⭐ Click the star to mark a location as Home.</p>
+      <p style="font-size:0.75rem;color:var(--muted);">⭐ Tap the star to set as Home.</p>
       <div class="manage-list" id="location-manage-list"></div>
     </div>
     <div class="modal-footer">
@@ -543,535 +360,472 @@
   </div>
 </div>
 
+<!-- ══ MODAL: Announcement ══════════════════════════════════ -->
+<div class="modal-backdrop" id="modal-announce">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>📢 Announcement</h2>
+    <div class="modal-body">
+      <p style="font-size:0.82rem;color:var(--muted);line-height:1.5;">Appears as a banner on every device until each person taps "Got it".</p>
+      <textarea id="announce-text" placeholder="Type your message…"></textarea>
+      <button class="btn-primary btn-full" onclick="sendAnnouncement()">📢 Publish</button>
+      <button class="btn-ghost btn-full btn-sm" onclick="clearAnnouncement()">Clear current announcement</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('modal-announce')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Move All ═══════════════════════════════════════ -->
+<div class="modal-backdrop" id="modal-moveall">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>🚀 Move Everyone</h2>
+    <div class="modal-body">
+      <p style="font-size:0.82rem;color:var(--muted);line-height:1.5;">Move the entire team to one location at once.</p>
+      <select id="sel-moveall"><option value="">— Pick a location —</option></select>
+      <button class="btn-warning btn-full" onclick="moveAll()">🚀 Move Everyone</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('modal-moveall')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Account ════════════════════════════════════════ -->
+<div class="modal-backdrop" id="modal-account">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>👤 You</h2>
+    <div class="modal-body">
+      <div class="manage-item">
+        <div class="manage-item-info">
+          <div class="avatar" id="account-avatar" style="width:36px;height:36px;"></div>
+          <div>
+            <div class="manage-item-name" id="account-name-label"></div>
+            <div class="manage-item-sub">Signed in on this device</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal('modal-account')">Close</button>
+      <button class="btn-danger" onclick="signOut()">Change Name</button>
+    </div>
+  </div>
+</div>
+
 <script>
-// ═══════════════════════════════════════════════════════════════
-//  FIREBASE REALTIME DATABASE — Global sync
-//  Docs: https://firebase.google.com/docs/database/web/read-and-write
-// ═══════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
+//  FIREBASE
+// ════════════════════════════════════════════════════════════
+const DB = {
+  state:        FIREBASE_URL + '/state.json',
+  empHistory:   FIREBASE_URL + '/empHistory.json',
+  announcement: FIREBASE_URL + '/announcement.json',
+};
 
-const DB_STATE_URL   = FIREBASE_URL + '/state.json';
-const DB_HISTORY_URL = FIREBASE_URL + '/history.json';
-const CONFIGURED     = FIREBASE_URL && !FIREBASE_URL.includes('YOUR_PROJECT');
-
-// Show warning if not configured
-if (!CONFIGURED) {
-  document.getElementById('config-warning').classList.add('show');
+function setSyncStatus(s) {
+  document.getElementById('sync-dot').className = 'sync-dot ' + s;
 }
 
-// ─── State ────────────────────────────────────────────────────
-const COLORS = ['#4f6ef7','#6ee7b7','#f59e0b','#ec4899','#8b5cf6','#10b981','#f97316','#06b6d4','#ef4444','#84cc16'];
-
-let state = { employees: [], locations: [] };
-// empHistory: { [empId]: [{locName, ts}, ...] } — last 5 per employee
-let empHistory = {};
-
-// ─── Sync helpers ─────────────────────────────────────────────
-function setSyncStatus(status) {
-  const dot   = document.getElementById('sync-dot');
-  const label = document.getElementById('sync-label');
-  dot.className = 'sync-dot ' + status;
-  label.textContent = { connected: 'Live', syncing: 'Syncing…', error: 'Offline', '': 'Connecting…' }[status] || '';
+async function fbGet(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('GET ' + r.status);
+  return r.json();
 }
 
-async function dbGet(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('Firebase GET failed: ' + res.status);
-  return res.json();
-}
-
-async function dbPut(url, data) {
+async function fbPut(url, data) {
   setSyncStatus('syncing');
-  const res = await fetch(url, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  });
-  if (!res.ok) throw new Error('Firebase PUT failed: ' + res.status);
+  const r = await fetch(url, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+  if (!r.ok) throw new Error('PUT ' + r.status);
   setSyncStatus('connected');
-  return res.json();
 }
 
-async function dbPost(url, data) {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  });
-  if (!res.ok) throw new Error('Firebase POST failed: ' + res.status);
-  return res.json();
+// ════════════════════════════════════════════════════════════
+//  SESSION — just a name, stored in localStorage
+// ════════════════════════════════════════════════════════════
+const NAME_KEY = 'tt_name';
+let currentName = null;
+
+function loadName() { return localStorage.getItem(NAME_KEY) || null; }
+function saveName(name) { localStorage.setItem(NAME_KEY, name); }
+function signOut() { localStorage.removeItem(NAME_KEY); location.reload(); }
+
+function submitName() {
+  const name = document.getElementById('input-name').value.trim();
+  if (!name) { document.getElementById('input-name').focus(); return; }
+  saveName(name);
+  currentName = name;
+  showApp(name);
 }
 
-// ─── Persistence: save/load (Firebase or localStorage fallback) ─
-async function save() {
-  if (!CONFIGURED) {
-    localStorage.setItem('teamtracker', JSON.stringify(state));
-    return;
-  }
-  try {
-    suppressNextStreamEvent();
-    await dbPut(DB_STATE_URL, state);
-  } catch(e) {
-    console.error('Save failed:', e);
-    setSyncStatus('error');
-    toast('⚠️ Sync failed — changes saved locally only.');
-    localStorage.setItem('teamtracker', JSON.stringify(state));
-  }
+document.getElementById('input-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitName();
+});
+
+function showApp(name) {
+  document.getElementById('name-screen').style.display = 'none';
+  updateUserUI(name);
+  initApp();
 }
 
-async function load() {
-  if (!CONFIGURED) {
-    try {
-      const raw = localStorage.getItem('teamtracker');
-      if (raw) state = JSON.parse(raw);
-    } catch(e) {}
-    return;
-  }
+function updateUserUI(name) {
+  const ini = name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  const color = colorFor(name);
+  document.getElementById('user-avatar').textContent = ini;
+  document.getElementById('user-avatar').style.background = color;
+  document.getElementById('user-name-label').textContent = name;
+  document.getElementById('account-avatar').textContent = ini;
+  document.getElementById('account-avatar').style.background = color;
+  document.getElementById('account-name-label').textContent = name;
+}
+
+// ════════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════════
+let state = { employees: [], locations: [] };
+let empHistory = {};
+let announcement = null;
+
+// ════════════════════════════════════════════════════════════
+//  LOAD / SAVE
+// ════════════════════════════════════════════════════════════
+async function loadAll() {
   try {
     setSyncStatus('');
-    const data = await dbGet(DB_STATE_URL);
-    if (data) {
-      state = {
-        employees: data.employees || [],
-        locations: data.locations || []
-      };
-    }
+    const [s, h, a] = await Promise.all([
+      fbGet(DB.state), fbGet(DB.empHistory), fbGet(DB.announcement)
+    ]);
+    if (s) state = { employees: s.employees||[], locations: s.locations||[] };
+    if (h && typeof h === 'object' && !Array.isArray(h)) empHistory = h;
+    if (a && a.msg) announcement = a;
     setSyncStatus('connected');
   } catch(e) {
-    console.error('Load failed:', e);
     setSyncStatus('error');
-    toast('⚠️ Could not connect to Firebase — running offline.');
-    try {
-      const raw = localStorage.getItem('teamtracker');
-      if (raw) state = JSON.parse(raw);
-    } catch(e2) {}
+    try { const r = localStorage.getItem('tt_state'); if(r) state = JSON.parse(r); } catch(e2){}
   }
 }
 
-// ─── Per-employee checkin history ────────────────────────────
-const MAX_EMP_HISTORY = 5;
+let _skipState = false, _skipHistory = false, _skipAnn = false;
 
-async function addCheckinHistory(empId, locName) {
-  if (!empHistory[empId]) empHistory[empId] = [];
-  empHistory[empId].unshift({ locName, ts: Date.now() });
-  if (empHistory[empId].length > MAX_EMP_HISTORY)
-    empHistory[empId] = empHistory[empId].slice(0, MAX_EMP_HISTORY);
-
-  if (!CONFIGURED) return;
-  try {
-    await dbPut(DB_HISTORY_URL, empHistory);
-  } catch(e) {
-    console.error('History save failed:', e);
-  }
+async function saveState() {
+  _skipState = true;
+  try { await fbPut(DB.state, state); localStorage.setItem('tt_state', JSON.stringify(state)); }
+  catch(e) { setSyncStatus('error'); }
+}
+async function saveHistory() {
+  _skipHistory = true;
+  try { await fbPut(DB.empHistory, empHistory); } catch(e){}
+}
+async function saveAnnouncement() {
+  _skipAnn = true;
+  try { await fbPut(DB.announcement, announcement || null); } catch(e){}
 }
 
-async function loadHistory() {
-  if (!CONFIGURED) return;
-  try {
-    const data = await dbGet(DB_HISTORY_URL);
-    if (data && typeof data === 'object' && !Array.isArray(data)) {
-      empHistory = data;
-    }
-  } catch(e) {
-    console.error('History load failed:', e);
-  }
-}
-
-// ─── Real-time streaming via Firebase SSE ─────────────────────
-// Firebase Realtime Database supports server-sent events (SSE)
-// on all plans — this gives instant updates to all connected clients.
-let stateStream = null;
-let historyStream = null;
-let _ignoreNextStateEvent = false;
-let _ignoreNextHistoryEvent = false;
-
+// ════════════════════════════════════════════════════════════
+//  STREAMING
+// ════════════════════════════════════════════════════════════
 function startStreaming() {
-  if (!CONFIGURED) return;
-
-  // Stream state changes
-  stateStream = new EventSource(DB_STATE_URL.replace('.json', '') + '.json?accept=text/event-stream');
-  stateStream.addEventListener('put', e => {
+  const ss = new EventSource(FIREBASE_URL + '/state.json?accept=text/event-stream');
+  ss.addEventListener('put', e => {
+    if (_skipState) { _skipState = false; return; }
     try {
-      const msg = JSON.parse(e.data);
-      if (_ignoreNextStateEvent) { _ignoreNextStateEvent = false; return; }
-      const data = msg.data;
-      if (data) {
-        state = {
-          employees: data.employees || [],
-          locations: data.locations || []
-        };
-        render();
-      }
+      const d = JSON.parse(e.data).data;
+      if (d) { state = { employees: d.employees||[], locations: d.locations||[] }; render(); }
       setSyncStatus('connected');
-    } catch(err) { console.error('State stream parse error:', err); }
+    } catch(err){}
   });
-  stateStream.addEventListener('patch', e => {
-    try {
-      const msg = JSON.parse(e.data);
-      if (_ignoreNextStateEvent) { _ignoreNextStateEvent = false; return; }
-      const data = msg.data;
-      if (data) {
-        if (data.employees) state.employees = data.employees;
-        if (data.locations) state.locations = data.locations;
-        render();
-      }
-    } catch(err) {}
-  });
-  stateStream.onerror = () => setSyncStatus('error');
+  ss.onerror = () => setSyncStatus('error');
 
-  // Stream history changes
-  historyStream = new EventSource(DB_HISTORY_URL.replace('.json', '') + '.json?accept=text/event-stream');
-  historyStream.addEventListener('put', e => {
-    try {
-      const msg = JSON.parse(e.data);
-      if (_ignoreNextHistoryEvent) { _ignoreNextHistoryEvent = false; return; }
-      const data = msg.data;
-      if (data && typeof data === 'object' && !Array.isArray(data)) {
-        empHistory = data;
-        render(); // re-render board to update tooltips
-      }
-    } catch(err) {}
+  const hs = new EventSource(FIREBASE_URL + '/empHistory.json?accept=text/event-stream');
+  hs.addEventListener('put', e => {
+    if (_skipHistory) { _skipHistory = false; return; }
+    try { const d = JSON.parse(e.data).data; if (d && typeof d==='object') { empHistory=d; renderBoard(); } } catch(err){}
   });
-  historyStream.onerror = () => {};
+
+  const as = new EventSource(FIREBASE_URL + '/announcement.json?accept=text/event-stream');
+  as.addEventListener('put', e => {
+    if (_skipAnn) { _skipAnn = false; return; }
+    try { const d = JSON.parse(e.data).data; announcement = (d&&d.msg)?d:null; renderAnnouncement(); } catch(err){}
+  });
 }
 
-// Call before saving so the stream doesn't echo our own write back
-function suppressNextStreamEvent() {
-  _ignoreNextStateEvent = true;
-  _ignoreNextHistoryEvent = true;
-}
-
-// ─── Utilities ────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════════════════════════
+const COLORS = ['#4f6ef7','#6ee7b7','#f59e0b','#ec4899','#8b5cf6','#10b981','#f97316','#06b6d4','#ef4444','#84cc16'];
 function uid() { return Math.random().toString(36).slice(2,9); }
-
-function initials(name) {
-  return name.trim().split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase();
+function initials(name) { return name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
+function colorFor(id) { return COLORS[[...id].reduce((a,c)=>a+c.charCodeAt(0),0)%COLORS.length]; }
+function esc(s) { return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function relTime(ts) {
+  const m = Math.floor((Date.now()-ts)/60000);
+  if (m<1) return 'just now';
+  if (m<60) return m+'m ago';
+  const h = Math.floor(m/60);
+  if (h<24) return h+'h ago';
+  return Math.floor(h/24)+'d ago';
 }
 
-function colorFor(id) {
-  const idx = [...id].reduce((a,c) => a + c.charCodeAt(0), 0) % COLORS.length;
-  return COLORS[idx];
-}
-
-function relativeTime(ts) {
-  const diff = Date.now() - ts;
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h/24)}d ago`;
-}
-
-// ─── Sounds ───────────────────────────────────────────────────
-const AudioCtx = window.AudioContext || window.webkitAudioContext;
-let ctx;
-
-function getAudioCtx() {
-  if (!ctx) ctx = new AudioCtx();
-  return ctx;
-}
-
-function playCheckin() {
+// ════════════════════════════════════════════════════════════
+//  SOUNDS
+// ════════════════════════════════════════════════════════════
+let _ac;
+function getAC() { if(!_ac) _ac=new(window.AudioContext||window.webkitAudioContext)(); return _ac; }
+function beep(f1,f2,type='sine') {
   try {
-    const ac = getAudioCtx();
-    const t = ac.currentTime;
-    [[523.25, 0], [659.25, 0.18]].forEach(([freq, delay]) => {
-      const osc = ac.createOscillator();
-      const gain = ac.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0, t + delay);
-      gain.gain.linearRampToValueAtTime(0.25, t + delay + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.5);
-      osc.connect(gain);
-      gain.connect(ac.destination);
-      osc.start(t + delay);
-      osc.stop(t + delay + 0.6);
+    const a=getAC(), t=a.currentTime;
+    [[f1,0],[f2,0.16]].filter(([f])=>f).forEach(([f,d])=>{
+      const o=a.createOscillator(),g=a.createGain();
+      o.type=type; o.frequency.value=f;
+      g.gain.setValueAtTime(0,t+d);
+      g.gain.linearRampToValueAtTime(0.18,t+d+0.02);
+      g.gain.exponentialRampToValueAtTime(0.001,t+d+0.45);
+      o.connect(g); g.connect(a.destination); o.start(t+d); o.stop(t+d+0.5);
     });
-  } catch(e) {}
+  } catch(e){}
 }
+function playCheckin() { beep(523,659); }
+function playAdd()     { beep(440,880,'triangle'); }
+function playRemove()  { beep(440,220,'triangle'); }
 
-function playAdd() {
-  try {
-    const ac = getAudioCtx();
-    const t = ac.currentTime;
-    const osc = ac.createOscillator();
-    const gain = ac.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(440, t);
-    osc.frequency.exponentialRampToValueAtTime(880, t + 0.12);
-    gain.gain.setValueAtTime(0.2, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-    osc.connect(gain);
-    gain.connect(ac.destination);
-    osc.start(t);
-    osc.stop(t + 0.35);
-  } catch(e) {}
-}
-
-function playRemove() {
-  try {
-    const ac = getAudioCtx();
-    const t = ac.currentTime;
-    const osc = ac.createOscillator();
-    const gain = ac.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(440, t);
-    osc.frequency.exponentialRampToValueAtTime(220, t + 0.14);
-    gain.gain.setValueAtTime(0.18, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-    osc.connect(gain);
-    gain.connect(ac.destination);
-    osc.start(t);
-    osc.stop(t + 0.35);
-  } catch(e) {}
-}
-
-// ─── Render ───────────────────────────────────────────────────
-function render() {
-  renderBoard();
-  renderSelects();
-  renderEmployeeList();
-  renderLocationList();
-}
+// ════════════════════════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════════════════════
+function render() { renderBoard(); renderSelects(); renderEmployeeList(); renderLocationList(); renderMoveAll(); }
 
 function renderBoard() {
   const board = document.getElementById('board');
   const empty = document.getElementById('empty-msg');
-
-  if (state.locations.length === 0) {
-    board.innerHTML = '';
-    empty.style.display = 'block';
-    return;
-  }
-  empty.style.display = 'none';
+  if (!state.locations.length) { board.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
 
   board.innerHTML = state.locations.map(loc => {
-    const here = state.employees.filter(e => e.locationId === loc.id);
-    const isHome = loc.isHome;
-
+    const here = state.employees.filter(e=>e.locationId===loc.id);
     const chips = here.length
       ? here.map(e => {
-          const eHist = empHistory[e.id] || [];
-          const tooltipRows = eHist.length
-            ? eHist.map(h => `
-                <div class="tooltip-row">
-                  <span class="tooltip-loc">📍 ${esc(h.locName)}</span>
-                  <span class="tooltip-time">${relativeTime(h.ts)}</span>
-                </div>`).join('')
-            : `<div class="tooltip-empty">No history yet</div>`;
-          return `
-          <div class="employee-chip ${isHome ? 'home-chip' : ''}">
+          const hist = (empHistory[e.id]||[]).slice(0,5);
+          const rows = hist.length
+            ? hist.map(h=>`<div class="tip-row"><span class="tip-loc">📍 ${esc(h.locName)}</span><span class="tip-time">${relTime(h.ts)}</span></div>`).join('')
+            : `<div class="tip-empty">No history yet</div>`;
+          return `<div class="employee-chip ${loc.isHome?'home-chip':''}">
             <div class="avatar" style="background:${colorFor(e.id)}">${initials(e.name)}</div>
             <span class="chip-name">${esc(e.name)}</span>
-            <div class="chip-status ${isHome ? 'home-dot' : ''}"></div>
-            <div class="chip-tooltip">
-              <div class="tooltip-title">📋 Recent Locations</div>
-              ${tooltipRows}
-            </div>
+            <div class="chip-dot ${loc.isHome?'home-dot':''}"></div>
+            <div class="chip-tooltip"><div class="tip-title">Recent Locations</div>${rows}</div>
           </div>`;
         }).join('')
-      : `<div class="empty-loc">No one here</div>`;
+      : `<div class="empty-loc">Nobody here</div>`;
 
-    return `
-      <div class="location-card ${isHome ? 'is-home' : ''}">
-        <div class="loc-header">
-          <div class="loc-name">
-            <span class="loc-icon">${isHome ? '🏠' : '📍'}</span>
-            ${esc(loc.name)}
-            ${isHome ? '<span class="home-badge">Home</span>' : ''}
-          </div>
-          <span class="loc-count">${here.length} / ${state.employees.length}</span>
-        </div>
-        <div class="employee-list">${chips}</div>
+    return `<div class="location-card ${loc.isHome?'is-home':''}">
+      <div class="loc-header">
+        <div class="loc-name">${loc.isHome?'🏠':'📍'} ${esc(loc.name)}${loc.isHome?' <span class="home-badge">Home</span>':''}</div>
+        <span class="loc-count">${here.length}/${state.employees.length}</span>
       </div>
-    `;
+      <div class="employee-list">${chips}</div>
+    </div>`;
   }).join('');
 }
 
 function renderSelects() {
-  const empSel = document.getElementById('sel-employee');
-  const locSel = document.getElementById('sel-location');
-  const prevEmp = empSel.value;
-  const prevLoc = locSel.value;
+  const es=document.getElementById('sel-employee'), ls=document.getElementById('sel-location');
+  const pe=es.value, pl=ls.value;
+  es.innerHTML='<option value="">Who are you?</option>'+state.employees.map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('');
+  ls.innerHTML='<option value="">Where?</option>'+state.locations.map(l=>`<option value="${l.id}">${esc(l.name)}${l.isHome?' 🏠':''}</option>`).join('');
+  if(pe) es.value=pe; if(pl) ls.value=pl;
 
-  empSel.innerHTML = '<option value="">— Select employee —</option>' +
-    state.employees.map(e => `<option value="${e.id}">${esc(e.name)}</option>`).join('');
-  locSel.innerHTML = '<option value="">— Select location —</option>' +
-    state.locations.map(l => `<option value="${l.id}">${esc(l.name)}${l.isHome ? ' 🏠' : ''}</option>`).join('');
-
-  if (prevEmp) empSel.value = prevEmp;
-  if (prevLoc) locSel.value = prevLoc;
+  // Pre-select current user if they exist as an employee
+  if (!pe && currentName) {
+    const match = state.employees.find(e=>e.name.toLowerCase()===currentName.toLowerCase());
+    if (match) es.value = match.id;
+  }
 }
 
 function renderEmployeeList() {
-  const list = document.getElementById('employee-manage-list');
-  if (!state.employees.length) {
-    list.innerHTML = '<div class="no-employees">No employees yet.</div>';
-    return;
-  }
-  list.innerHTML = state.employees.map(e => {
-    const loc = state.locations.find(l => l.id === e.locationId);
-    return `
-      <div class="manage-item">
-        <div class="manage-item-info">
-          <div class="avatar" style="background:${colorFor(e.id)};width:28px;height:28px;font-size:0.72rem">${initials(e.name)}</div>
-          <div>
-            <div class="manage-item-name">${esc(e.name)}</div>
-            <div style="font-size:0.74rem;color:var(--muted)">${loc ? esc(loc.name) : 'Not checked in'}</div>
-          </div>
-        </div>
-        <button class="btn-danger btn-sm" onclick="removeEmployee('${e.id}')">Remove</button>
+  const list=document.getElementById('employee-manage-list');
+  if(!state.employees.length){list.innerHTML='<div class="no-items">No employees yet.</div>';return;}
+  list.innerHTML=state.employees.map(e=>{
+    const loc=state.locations.find(l=>l.id===e.locationId);
+    return `<div class="manage-item">
+      <div class="manage-item-info">
+        <div class="avatar" style="background:${colorFor(e.id)};width:30px;height:30px;font-size:0.72rem">${initials(e.name)}</div>
+        <div><div class="manage-item-name">${esc(e.name)}</div><div class="manage-item-sub">${loc?esc(loc.name):'Not checked in'}</div></div>
       </div>
-    `;
+      <button class="btn-danger btn-sm" onclick="removeEmployee('${e.id}')">Remove</button>
+    </div>`;
   }).join('');
 }
 
 function renderLocationList() {
-  const list = document.getElementById('location-manage-list');
-  if (!state.locations.length) {
-    list.innerHTML = '<div class="no-employees">No locations yet.</div>';
-    return;
-  }
-  list.innerHTML = state.locations.map(loc => `
+  const list=document.getElementById('location-manage-list');
+  if(!state.locations.length){list.innerHTML='<div class="no-items">No locations yet.</div>';return;}
+  list.innerHTML=state.locations.map(loc=>`
     <div class="manage-item">
       <div class="manage-item-info">
-        <span class="loc-icon">${loc.isHome ? '🏠' : '📍'}</span>
-        <span class="manage-item-name">${esc(loc.name)}</span>
-        ${loc.isHome ? '<span class="home-badge">Home</span>' : ''}
+        <span style="font-size:1.1rem">${loc.isHome?'🏠':'📍'}</span>
+        <div><div class="manage-item-name">${esc(loc.name)}</div>${loc.isHome?'<div class="manage-item-sub">Home base</div>':''}</div>
       </div>
-      <div style="display:flex;gap:6px;align-items:center;">
-        <span class="home-star ${loc.isHome ? 'active' : ''}" title="Set as Home" onclick="setHome('${loc.id}')">⭐</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span class="home-star ${loc.isHome?'active':''}" onclick="setHome('${loc.id}')">⭐</span>
         <button class="btn-danger btn-sm" onclick="removeLocation('${loc.id}')">Remove</button>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
+function renderMoveAll() {
+  const sel=document.getElementById('sel-moveall'), prev=sel.value;
+  sel.innerHTML='<option value="">— Pick a location —</option>'+state.locations.map(l=>`<option value="${l.id}">${esc(l.name)}${l.isHome?' 🏠':''}</option>`).join('');
+  if(prev) sel.value=prev;
+}
 
-// ─── Actions ──────────────────────────────────────────────────
+function renderAnnouncement() {
+  const bar=document.getElementById('announcement-bar');
+  if(!announcement||!announcement.msg){bar.classList.remove('visible');return;}
+  const key='ann_'+( announcement.id||'');
+  if(localStorage.getItem(key)){bar.classList.remove('visible');return;}
+  document.getElementById('ann-text').textContent=announcement.msg;
+  bar.classList.add('visible');
+}
+
+// ════════════════════════════════════════════════════════════
+//  ACTIONS
+// ════════════════════════════════════════════════════════════
 async function addEmployee() {
-  const input = document.getElementById('new-employee-name');
-  const name = input.value.trim();
-  if (!name) return;
-  if (state.employees.some(e => e.name.toLowerCase() === name.toLowerCase())) {
-    toast('Employee already exists.'); return;
-  }
-  const emp = { id: uid(), name, locationId: null };
-  state.employees.push(emp);
-  await save();
-  render();
-  input.value = '';
-  playAdd();
-  toast(`${name} added!`);
+  const inp=document.getElementById('new-employee-name');
+  const name=inp.value.trim(); if(!name) return;
+  if(state.employees.some(e=>e.name.toLowerCase()===name.toLowerCase())){toast('Already exists.');return;}
+  state.employees.push({id:uid(),name,locationId:null});
+  await saveState(); render(); inp.value=''; playAdd(); toast(name+' added!');
 }
 
 async function removeEmployee(id) {
-  const emp = state.employees.find(e => e.id === id);
-  state.employees = state.employees.filter(e => e.id !== id);
-  await save();
-  if (emp) {
-  }
-  render();
-  playRemove();
-  if (emp) toast(`${emp.name} removed.`);
+  const emp=state.employees.find(e=>e.id===id);
+  state.employees=state.employees.filter(e=>e.id!==id);
+  delete empHistory[id];
+  await saveState(); await saveHistory(); render(); playRemove();
+  if(emp) toast(emp.name+' removed.');
 }
 
 async function addLocation() {
-  const input = document.getElementById('new-location-name');
-  const name = input.value.trim();
-  if (!name) return;
-  if (state.locations.some(l => l.name.toLowerCase() === name.toLowerCase())) {
-    toast('Location already exists.'); return;
-  }
-  const isFirst = state.locations.length === 0;
-  state.locations.push({ id: uid(), name, isHome: isFirst });
-  await save();
-  render();
-  input.value = '';
-  playAdd();
-  toast(`${name} added!${isFirst ? ' (set as Home)' : ''}`);
+  const inp=document.getElementById('new-location-name');
+  const name=inp.value.trim(); if(!name) return;
+  if(state.locations.some(l=>l.name.toLowerCase()===name.toLowerCase())){toast('Already exists.');return;}
+  const isFirst=state.locations.length===0;
+  state.locations.push({id:uid(),name,isHome:isFirst});
+  await saveState(); render(); inp.value=''; playAdd(); toast(name+' added!'+(isFirst?' Set as Home 🏠':''));
 }
 
 async function removeLocation(id) {
-  const loc = state.locations.find(l => l.id === id);
-  state.employees.forEach(e => { if (e.locationId === id) e.locationId = null; });
-  state.locations = state.locations.filter(l => l.id !== id);
-  await save();
-  if (loc) {
-  }
-  render();
-  playRemove();
-  if (loc) toast(`${loc.name} removed.`);
+  const loc=state.locations.find(l=>l.id===id);
+  state.employees.forEach(e=>{if(e.locationId===id)e.locationId=null;});
+  state.locations=state.locations.filter(l=>l.id!==id);
+  await saveState(); render(); playRemove();
+  if(loc) toast(loc.name+' removed.');
 }
 
 async function setHome(id) {
-  state.locations.forEach(l => l.isHome = (l.id === id));
-  await save();
-  const loc = state.locations.find(l => l.id === id);
-  if (loc) {
-    toast(`${loc.name} is now Home 🏠`);
-  }
-  render();
+  state.locations.forEach(l=>l.isHome=(l.id===id));
+  await saveState(); render();
+  const loc=state.locations.find(l=>l.id===id);
+  if(loc) toast(loc.name+' is now Home 🏠');
 }
 
 async function updateEmployeeLocation() {
-  const empId = document.getElementById('sel-employee').value;
-  const locId = document.getElementById('sel-location').value;
-  if (!empId || !locId) { toast('Please select both an employee and a location.'); return; }
-
-  const emp = state.employees.find(e => e.id === empId);
-  const loc = state.locations.find(l => l.id === locId);
-
-  if (emp && emp.locationId === locId) { toast(`${emp.name} is already at ${loc.name}.`); return; }
-
-  emp.locationId = locId;
-  await save();
-  await addCheckinHistory(emp.id, loc.name);
-
-  render();
-  playCheckin();
-  toast(`${emp.name} checked in at ${loc.name}${loc.isHome ? ' 🏠' : ''}!`);
+  const empId=document.getElementById('sel-employee').value;
+  const locId=document.getElementById('sel-location').value;
+  if(!empId||!locId){toast('Pick a name and a location.');return;}
+  const emp=state.employees.find(e=>e.id===empId);
+  const loc=state.locations.find(l=>l.id===locId);
+  if(!emp||!loc) return;
+  if(emp.locationId===locId){toast('Already there!');return;}
+  emp.locationId=locId;
+  if(!empHistory[empId]) empHistory[empId]=[];
+  empHistory[empId].unshift({locName:loc.name,ts:Date.now()});
+  empHistory[empId]=empHistory[empId].slice(0,5);
+  await saveState(); await saveHistory(); render();
+  playCheckin(); toast(emp.name+' checked in at '+loc.name+(loc.isHome?' 🏠':'')+'!');
 }
 
-// ─── Modals ───────────────────────────────────────────────────
-function openModal(id) {
-  document.getElementById(id).classList.add('open');
-  render();
+async function moveAll() {
+  const locId=document.getElementById('sel-moveall').value;
+  if(!locId){toast('Pick a location.');return;}
+  const loc=state.locations.find(l=>l.id===locId);
+  if(!loc) return;
+  const ts=Date.now();
+  state.employees.forEach(e=>{
+    e.locationId=locId;
+    if(!empHistory[e.id]) empHistory[e.id]=[];
+    empHistory[e.id].unshift({locName:loc.name,ts});
+    empHistory[e.id]=empHistory[e.id].slice(0,5);
+  });
+  await saveState(); await saveHistory(); render();
+  closeModal('modal-moveall'); playCheckin();
+  toast('Everyone moved to '+loc.name+(loc.isHome?' 🏠':'')+'!');
 }
 
-function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
+async function confirmClearAll() {
+  if(!confirm('Clear all check-ins? Everyone will be marked as not checked in.')) return;
+  state.employees.forEach(e=>e.locationId=null);
+  await saveState(); render(); toast('All check-ins cleared.');
 }
 
-document.querySelectorAll('.modal-backdrop').forEach(el => {
-  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+async function sendAnnouncement() {
+  const msg=document.getElementById('announce-text').value.trim();
+  if(!msg){toast('Type a message first.');return;}
+  announcement={msg,id:uid(),ts:Date.now()};
+  await saveAnnouncement(); renderAnnouncement();
+  closeModal('modal-announce');
+  document.getElementById('announce-text').value='';
+  toast('Announcement sent!');
+}
+
+async function clearAnnouncement() {
+  announcement=null;
+  await saveAnnouncement(); renderAnnouncement();
+  closeModal('modal-announce'); toast('Announcement cleared.');
+}
+
+function dismissAnnouncement() {
+  if(!announcement) return;
+  localStorage.setItem('ann_'+(announcement.id||''),'1');
+  renderAnnouncement();
+}
+
+// ════════════════════════════════════════════════════════════
+//  MODALS
+// ════════════════════════════════════════════════════════════
+function openModal(id) { document.getElementById(id).classList.add('open'); render(); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-backdrop').forEach(el=>{
+  el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});
 });
 
-// ─── Toast ────────────────────────────────────────────────────
-function toast(msg, duration = 3000) {
-  const c = document.getElementById('toast-container');
-  const el = document.createElement('div');
-  el.className = 'toast';
-  el.textContent = msg;
-  c.appendChild(el);
-  setTimeout(() => {
-    el.classList.add('fade-out');
-    setTimeout(() => el.remove(), 400);
-  }, duration);
+// ════════════════════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════════════════════
+function toast(msg,dur=2800) {
+  const c=document.getElementById('toast-container');
+  const el=document.createElement('div');
+  el.className='toast'; el.textContent=msg; c.appendChild(el);
+  setTimeout(()=>{el.classList.add('fade-out');setTimeout(()=>el.remove(),300);},dur);
 }
 
-// ─── Escape ───────────────────────────────────────────────────
-function esc(str) {
-  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-}
-
-// ─── Init ─────────────────────────────────────────────────────
-(async () => {
-  await load();
-  await loadHistory();
+// ════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════
+async function initApp() {
+  await loadAll();
   render();
+  renderAnnouncement();
   startStreaming();
+}
+
+// Check for saved name on load
+(function() {
+  const name = loadName();
+  if (name) { currentName=name; showApp(name); }
 })();
 </script>
 </body>
