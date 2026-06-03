@@ -1216,11 +1216,12 @@ async function updateEmployeeLocation(suffix) {
   const loc=state.locations.find(l=>l.id===locId);
   if(!emp||!loc) return;
   if(emp.locationId===locId){toast('Already there!');return;}
+  const hadLocation = !!emp.locationId;
   emp.locationId=locId;
   if(!empHistory[empId]) empHistory[empId]=[];
   empHistory[empId].unshift({locName:loc.name,ts:Date.now()});
   empHistory[empId]=empHistory[empId].slice(0,5);
-  inroute[empId] = Date.now();
+  if (hadLocation) inroute[empId] = Date.now();
   render();
   document.getElementById('sel-location-m').value = '';
   document.getElementById('sel-location-d').value = '';
