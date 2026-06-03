@@ -502,7 +502,7 @@ async function saveInroute(){try{await fbPut(DB.inroute,inroute);}catch(e){}}
 function startStreaming(){
   const ss=new EventSource(FIREBASE_URL+'/state.json?accept=text/event-stream');
   let ssR=false;
-  ss.addEventListener('put',e=>{try{if(!ssR){ssR=true;return;}const d=JSON.parse(e.data).data;if(!d)return;const sig=a=>JSON.stringify([...(a||[])].sort((x,y)=>x.id>y.id?1:-1).map(x=>x.id+'|'+(x.locationId||'')+'|'+(x.address||'')));if(sig(d.employees)===sig(state.employees)&&sig(d.locations)===sig(state.locations))return;state={employees:d.employees||[],locations:d.locations||[]};render();setSyncStatus('connected');}catch(err){}});
+  ss.addEventListener('put',e=>{try{if(!ssR){ssR=true;return;}const d=JSON.parse(e.data).data;if(!d)return;const sig=a=>JSON.stringify([...(a||[])].sort((x,y)=>x.id>y.id?1:-1).map(x=>x.id+'|'+(x.locationId||'')+'|'+(x.address||'')+'|'+(x.lat||'')));if(sig(d.employees)===sig(state.employees)&&sig(d.locations)===sig(state.locations))return;state={employees:d.employees||[],locations:d.locations||[]};render();setSyncStatus('connected');}catch(err){}});
   ss.onerror=()=>setSyncStatus('error');
   const hs=new EventSource(FIREBASE_URL+'/empHistory.json?accept=text/event-stream');let hsR=false;
   hs.addEventListener('put',e=>{try{if(!hsR){hsR=true;return;}const d=JSON.parse(e.data).data;if(d&&typeof d==='object'){empHistory=d;renderBoard();renderMapMarkers();}}catch(err){}});
@@ -621,86 +621,170 @@ function initLeaflet(){
 }
 
 
-// Build SVG// Build SVG icon for Leaflet marker
-function buildLeafletIcon(loc,people){
-  const R=20;
-  const spacing=people.length>1?26:0;
-  const totalW=people.length>0?R*2+(people.length-1)*spacing:R*2;
-  const boxW=Math.max(totalW,44)+14;
-  const boxH=R*2+6+10; // +10 for arrow
-  const cx=boxW/2;
-  const border=loc.isHome?'#f59e0b':'#4f6ef7';
-  let avatarsSVG='';
-  const startX=(boxW-totalW)/2+R;
-  for(let i=0;i<people.length;i++){
-    const x=startX+i*spacing;
-    avatarsSVG+=`<circle cx="${x}" cy="${R+3}" r="${R}" fill="${colorFor(people[i].id)}" stroke="#0a0c12" stroke-width="2"/>`;
-    avatarsSVG+=`<text x="${x}" y="${R+3}" text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="900" fill="white" font-family="system-ui,-apple-system">${initials(people[i].name)}</text>`;
+// Build a compact count-bubble marker. Shows emoji/icon + person count.
+// Nearby markers get a small lat/lng offset so they don't stack on top of each other.
+function buildLeafletIcon(loc, people, offsetApplied){
+  const count = people.length;
+  const border = loc.isHome ? '#f59e0b' : '#4f6ef7';
+  const bg     = '#111420';
+  const emoji  = loc.emoji || (loc.isHome ? '🏠' : '📍');
+
+  // Pie-slice avatar ring for up to 4 people, count badge for more
+  let avatarRing = '';
+  if(count > 0){
+    const shown = people.slice(0, 4);
+    const r = 11, cx2 = 22, cy2 = 22;
+    const angles = count === 1 ? [270]
+      : count === 2 ? [225, 315]
+      : count === 3 ? [210, 270, 330]
+      : [225, 270, 315, 360];
+    shown.forEach((e, i) => {
+      const rad = (angles[i] * Math.PI) / 180;
+      const x = cx2 + r * Math.cos(rad);
+      const y = cy2 + r * Math.sin(rad);
+      avatarRing += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7" fill="${colorFor(e.id)}" stroke="${bg}" stroke-width="1.5"/>`;
+      avatarRing += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="6" font-weight="900" fill="white" font-family="system-ui">${initials(e.name)}</text>`;
+    });
+    if(count > 4){
+      avatarRing += `<circle cx="33" cy="12" r="8" fill="${border}" stroke="${bg}" stroke-width="1.5"/>`;
+      avatarRing += `<text x="33" y="12" text-anchor="middle" dominant-baseline="central" font-size="7" font-weight="900" fill="white" font-family="system-ui">+${count-4}</text>`;
+    }
   }
-  const svg=people.length===0
-    ?`<svg xmlns="http://www.w3.org/2000/svg" width="38" height="46" viewBox="0 0 38 46">
-        <rect x="2" y="2" width="34" height="34" rx="8" fill="#181c2e" stroke="${border}" stroke-width="2"/>
-        <text x="19" y="21" text-anchor="middle" dominant-baseline="central" font-size="17">${loc.emoji||(loc.isHome?'🏠':'📍')}</text>
-        <polygon points="13,34 25,34 19,44" fill="#181c2e"/>
-        <polygon points="14,33 24,33 19,41" fill="${border}" opacity=".5"/>
-      </svg>`
-    :`<svg xmlns="http://www.w3.org/2000/svg" width="${boxW}" height="${boxH+2}" viewBox="0 0 ${boxW} ${boxH+2}">
-        <rect x="2" y="2" width="${boxW-4}" height="${boxH-10}" rx="11" fill="#111420" stroke="${border}" stroke-width="2"/>
-        ${avatarsSVG}
-        <polygon points="${cx-7},${boxH-8} ${cx+7},${boxH-8} ${cx},${boxH+2}" fill="#111420"/>
-        <polygon points="${cx-6},${boxH-9} ${cx+6},${boxH-9} ${cx},${boxH-1}" fill="${border}" opacity=".6"/>
-      </svg>`;
+
+  const countBadge = count > 0
+    ? `<circle cx="34" cy="10" r="8" fill="${border}" stroke="${bg}" stroke-width="1.5"/>
+       <text x="34" y="10" text-anchor="middle" dominant-baseline="central" font-size="${count>9?'7':'8'}" font-weight="900" fill="white" font-family="system-ui">${count}</text>`
+    : '';
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="52" viewBox="0 0 44 52">
+    <filter id="sh"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity=".5"/></filter>
+    <g filter="url(#sh)">
+      <circle cx="22" cy="22" r="19" fill="${bg}" stroke="${border}" stroke-width="2"/>
+      <text x="22" y="22" text-anchor="middle" dominant-baseline="central" font-size="16">${emoji}</text>
+      ${avatarRing}
+      ${countBadge}
+      <line x1="22" y1="40" x2="22" y2="50" stroke="${border}" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="22" cy="50" r="2" fill="${border}"/>
+    </g>
+  </svg>`;
+
   return L.divIcon({
-    html:svg,
-    className:'',
-    iconSize:[boxW,boxH+2],
-    iconAnchor:[cx,boxH+2],
-    popupAnchor:[0,-(boxH+2)]
+    html: svg,
+    className: '',
+    iconSize: [44, 52],
+    iconAnchor: [22, 52],
+    popupAnchor: [0, -54]
   });
+}
+
+// Small offset for markers at the same or very close coordinates
+function offsetNearby(locations, allPositions){
+  const THRESH = 0.0008; // ~90m
+  const offsets = {};
+  const groups = [];
+  const used = new Set();
+  locations.forEach((loc, i) => {
+    if(used.has(i)) return;
+    const pos = allPositions[loc.id];
+    if(!pos) return;
+    const group = [i];
+    used.add(i);
+    locations.forEach((loc2, j) => {
+      if(i===j||used.has(j)) return;
+      const pos2 = allPositions[loc2.id];
+      if(!pos2) return;
+      if(Math.abs(pos.lat-pos2.lat)<THRESH && Math.abs(pos.lng-pos2.lng)<THRESH){
+        group.push(j); used.add(j);
+      }
+    });
+    if(group.length > 1){
+      groups.push(group);
+    }
+  });
+  groups.forEach(group => {
+    const n = group.length;
+    group.forEach((idx, k) => {
+      const angle = (2 * Math.PI * k) / n - Math.PI/2;
+      const dist = 0.0004;
+      const loc = locations[idx];
+      const base = allPositions[loc.id];
+      offsets[loc.id] = {
+        lat: base.lat + dist * Math.sin(angle),
+        lng: base.lng + dist * Math.cos(angle)
+      };
+    });
+  });
+  return offsets;
 }
 
 async function renderMapMarkers(){
   if(!leafletMap) return;
-  const locIds=new Set(state.locations.map(l=>l.id));
+
+  const locIds = new Set(state.locations.map(l=>l.id));
+
+  // Remove markers for deleted locations
   for(const id of Object.keys(leafletMarkers)){
-    if(!locIds.has(id)){leafletMarkers[id].remove();delete leafletMarkers[id];}
+    if(!locIds.has(id)){ leafletMarkers[id].remove(); delete leafletMarkers[id]; }
   }
-  const positions=[];
+
+  // Resolve positions (use cached lat/lng or geocode)
+  const allPositions = {};
   for(const loc of state.locations){
-    if(!loc.address&&!loc.lat){
-      if(leafletMarkers[loc.id]){leafletMarkers[loc.id].remove();delete leafletMarkers[loc.id];}
+    if(loc.lat){ allPositions[loc.id] = {lat:loc.lat, lng:loc.lng}; continue; }
+    if(!loc.address) continue;
+    const pos = await geocodeAddress(loc.address);
+    if(pos){ loc.lat=pos.lat; loc.lng=pos.lng; allPositions[loc.id]=pos; }
+  }
+
+  // Compute offsets for nearby markers so they don't stack
+  const offsets = offsetNearby(state.locations, allPositions);
+  const positions = [];
+
+  for(const loc of state.locations){
+    const rawPos = allPositions[loc.id];
+    if(!rawPos){
+      if(leafletMarkers[loc.id]){ leafletMarkers[loc.id].remove(); delete leafletMarkers[loc.id]; }
       continue;
     }
-    let pos=loc.lat?{lat:loc.lat,lng:loc.lng}:await geocodeAddress(loc.address);
-    if(!pos){if(leafletMarkers[loc.id]){leafletMarkers[loc.id].remove();delete leafletMarkers[loc.id];}continue;}
-    if(!loc.lat){loc.lat=pos.lat;loc.lng=pos.lng;}
-    const people=state.employees.filter(e=>e.locationId===loc.id);
-    const icon=buildLeafletIcon(loc,people);
-    const popupContent=buildPopupHTML(loc,people);
+    const pos = offsets[loc.id] || rawPos;
+    const people = state.employees.filter(e=>e.locationId===loc.id);
+    const icon = buildLeafletIcon(loc, people, !!offsets[loc.id]);
+    const popup = buildPopupHTML(loc, people);
+
     if(leafletMarkers[loc.id]){
+      leafletMarkers[loc.id].setLatLng([pos.lat, pos.lng]);
       leafletMarkers[loc.id].setIcon(icon);
-      leafletMarkers[loc.id].getPopup()?.setContent(popupContent);
-    }else{
-      const m=L.marker([pos.lat,pos.lng],{icon}).addTo(leafletMap);
-      m.bindPopup(popupContent,{className:'tt-popup',maxWidth:200});
-      m.on('click',()=>highlightSidebarCard(loc.id));
-      leafletMarkers[loc.id]=m;
+      leafletMarkers[loc.id].getPopup()?.setContent(popup);
+    } else {
+      const m = L.marker([pos.lat, pos.lng], {icon, zIndexOffset: people.length*10}).addTo(leafletMap);
+      m.bindPopup(popup, {maxWidth:220, className:'tt-popup'});
+      m.on('click', ()=>highlightSidebarCard(loc.id));
+      leafletMarkers[loc.id] = m;
     }
-    positions.push([pos.lat,pos.lng]);
+    positions.push([rawPos.lat, rawPos.lng]);
   }
-  if(positions.length===1){leafletMap.setView(positions[0],13);}
-  else if(positions.length>1){leafletMap.fitBounds(positions,{padding:[40,40]});}
+
+  if(positions.length===1){ leafletMap.setView(positions[0], 14); }
+  else if(positions.length>1){ leafletMap.fitBounds(positions, {padding:[50,50]}); }
   renderSidebar();
 }
 
-function buildPopupHTML(loc,people){
-  const pList=people.length
-    ?people.map(e=>`<div style="display:flex;align-items:center;gap:6px;margin-top:4px"><div style="width:20px;height:20px;border-radius:50%;background:${colorFor(e.id)};display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:#fff;flex-shrink:0">${initials(e.name)}</div><span style="font-size:11px;font-weight:600">${esc(e.name)}</span></div>`).join('')
-    :'<div style="color:#4a5480;font-size:11px;margin-top:4px">Nobody here</div>';
-  return `<div style="font-family:system-ui;padding:2px 0">
-    <div style="font-weight:800;font-size:12px;margin-bottom:2px">${loc.emoji||(loc.isHome?'🏠':'📍')} ${esc(loc.name)}</div>
-    ${loc.address?`<div style="color:#4a5480;font-size:10px;margin-bottom:4px">${esc(loc.address)}</div>`:''}
-    ${pList}
+function buildPopupHTML(loc, people){
+  const rows = people.length
+    ? people.map(e => {
+        const ir = inroute[e.id] && (Date.now()-inroute[e.id])<INROUTE_MS;
+        return `<div style="display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid #1f243d">
+          <div style="width:24px;height:24px;border-radius:50%;background:${colorFor(e.id)};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;flex-shrink:0">${initials(e.name)}</div>
+          <span style="font-size:12px;font-weight:600;flex:1">${esc(e.name)}</span>
+          ${ir?'<span style="font-size:10px">🚗</span>':''}
+        </div>`;
+      }).join('')
+    : '<div style="color:#4a5480;font-size:11px;padding:6px 0">Nobody here right now</div>';
+
+  return `<div style="font-family:-apple-system,system-ui,sans-serif;min-width:160px;max-width:210px">
+    <div style="font-weight:800;font-size:13px;margin-bottom:2px;color:#e8eaf2">${loc.emoji||(loc.isHome?'🏠':'📍')} ${esc(loc.name)}</div>
+    ${loc.address?`<div style="color:#4a5480;font-size:10px;margin-bottom:6px">${esc(loc.address)}</div>`:''}
+    <div style="color:#e8eaf2">${rows}</div>
   </div>`;
 }
 
@@ -812,22 +896,20 @@ async function updateAddress(locId, address){
   address = address.trim();
   const loc = state.locations.find(l=>l.id===locId); if(!loc) return;
 
-  // Support "lat,lng" manual entry as escape hatch
+  const statusEl = document.getElementById('gs-'+locId);
+  const itemEl   = document.getElementById('lmi-'+locId);
+
+  // Support manual "lat,lng" entry
   const coordMatch = address.match(/^(-?\d+\.\d+),\s*(-?\d+\.\d+)$/);
   if(coordMatch){
     loc.address = address; loc.lat = parseFloat(coordMatch[1]); loc.lng = parseFloat(coordMatch[2]);
-    const statusEl=document.getElementById('gs-'+locId);
-    const itemEl=document.getElementById('lmi-'+locId);
     if(statusEl) statusEl.innerHTML='<span class="ok">✓ Coordinates set</span>';
     if(itemEl){ itemEl.classList.remove('geocoding'); itemEl.classList.add('geocoded'); }
     await saveState(); renderMapMarkers(); return;
   }
 
-  if(loc.address===address) return;
+  if(loc.address===address && loc.lat) return; // already geocoded, no change
   loc.address = address; loc.lat = null; loc.lng = null;
-
-  const statusEl = document.getElementById('gs-'+locId);
-  const itemEl   = document.getElementById('lmi-'+locId);
 
   if(!address){
     if(statusEl) statusEl.innerHTML='';
@@ -836,37 +918,33 @@ async function updateAddress(locId, address){
   }
 
   if(itemEl){ itemEl.classList.add('geocoding'); itemEl.classList.remove('geocoded'); }
-
-  // Try Census first, show progress
   if(statusEl) statusEl.innerHTML='<span style="color:var(--muted)">⏳ Trying Census…</span>';
-  let pos = await tryCensus(address);
 
+  let pos = await tryCensus(address);
   if(!pos){
     if(statusEl) statusEl.innerHTML='<span style="color:var(--muted)">⏳ Trying OpenStreetMap…</span>';
     pos = await tryNominatim(address);
   }
-
   if(!pos){
-    if(statusEl) statusEl.innerHTML='<span style="color:var(--muted)">⏳ Trying zip fallback…</span>';
+    if(statusEl) statusEl.innerHTML='<span style="color:var(--muted)">⏳ Trying zip area…</span>';
     pos = await tryZipFallback(address);
   }
 
-  await saveState();
-
   if(pos){
+    // Save coords INTO the location object BEFORE saving state — one save with full data
     loc.lat = pos.lat; loc.lng = pos.lng;
     if(statusEl) statusEl.innerHTML='<span class="ok">✓ Mapped on map</span>';
     if(itemEl){ itemEl.classList.remove('geocoding'); itemEl.classList.add('geocoded'); }
-    await saveState(); renderMapMarkers();
   } else {
     if(itemEl) itemEl.classList.remove('geocoding');
     if(statusEl) statusEl.innerHTML=
-      '<span class="err">⚠ Not found.</span> '+
-      '<span style="color:var(--muted);font-size:0.6rem">Try: <em>6701 Canyon Falls Dr, TX 76226</em> '+
-      'or paste lat,lng coords from '+
-      '<a href="https://www.google.com/maps" target="_blank" style="color:var(--accent)">Google Maps</a> '+
-      '(right-click a spot → copy coords)</span>';
+      '<span class="err">⚠ Not found — try just the street + zip, or paste lat,lng from '+
+      '<a href="https://www.google.com/maps" target="_blank" style="color:var(--accent)">Google Maps</a>'+
+      ' (right-click → copy coords)</span>';
   }
+  // Single save — coords are already set on loc before this runs
+  await saveState();
+  renderMapMarkers();
 }
 
 // ════════════════════════════════════════════════════════════
