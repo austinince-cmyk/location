@@ -634,6 +634,7 @@ async function save() {
     return;
   }
   try {
+    suppressNextStreamEvent();
     await dbPut(DB_STATE_URL, state);
   } catch(e) {
     console.error('Save failed:', e);
@@ -710,35 +711,68 @@ async function clearHistory() {
   try { await dbPut(DB_HISTORY_URL, []); } catch(e) {}
 }
 
-// ─── Real-time polling (Firebase REST SSE isn't in free tier) ──
-// Poll every 8 seconds to pick up changes from other users
-let pollTimer = null;
+// ─── Real-time streaming via Firebase SSE ─────────────────────
+// Firebase Realtime Database supports server-sent events (SSE)
+// on all plans — this gives instant updates to all connected clients.
+let stateStream = null;
+let historyStream = null;
+let _ignoreNextStateEvent = false;
+let _ignoreNextHistoryEvent = false;
 
-function startPolling() {
+function startStreaming() {
   if (!CONFIGURED) return;
-  pollTimer = setInterval(async () => {
+
+  // Stream state changes
+  stateStream = new EventSource(DB_STATE_URL.replace('.json', '') + '.json?accept=text/event-stream');
+  stateStream.addEventListener('put', e => {
     try {
-      const [newState, newHistory] = await Promise.all([
-        dbGet(DB_STATE_URL),
-        dbGet(DB_HISTORY_URL)
-      ]);
-      if (newState) {
+      const msg = JSON.parse(e.data);
+      if (_ignoreNextStateEvent) { _ignoreNextStateEvent = false; return; }
+      const data = msg.data;
+      if (data) {
         state = {
-          employees: newState.employees || [],
-          locations: newState.locations || []
+          employees: data.employees || [],
+          locations: data.locations || []
         };
         render();
       }
-      if (Array.isArray(newHistory)) {
-        const prevLen = history.length;
-        history = newHistory;
-        if (history.length !== prevLen) renderHistory();
-      }
       setSyncStatus('connected');
-    } catch(e) {
-      setSyncStatus('error');
-    }
-  }, 8000);
+    } catch(err) { console.error('State stream parse error:', err); }
+  });
+  stateStream.addEventListener('patch', e => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (_ignoreNextStateEvent) { _ignoreNextStateEvent = false; return; }
+      const data = msg.data;
+      if (data) {
+        if (data.employees) state.employees = data.employees;
+        if (data.locations) state.locations = data.locations;
+        render();
+      }
+    } catch(err) {}
+  });
+  stateStream.onerror = () => setSyncStatus('error');
+
+  // Stream history changes
+  historyStream = new EventSource(DB_HISTORY_URL.replace('.json', '') + '.json?accept=text/event-stream');
+  historyStream.addEventListener('put', e => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (_ignoreNextHistoryEvent) { _ignoreNextHistoryEvent = false; return; }
+      const data = msg.data;
+      if (Array.isArray(data)) {
+        history = data;
+        renderHistory();
+      }
+    } catch(err) {}
+  });
+  historyStream.onerror = () => {};
+}
+
+// Call before saving so the stream doesn't echo our own write back
+function suppressNextStreamEvent() {
+  _ignoreNextStateEvent = true;
+  _ignoreNextHistoryEvent = true;
 }
 
 // ─── Utilities ────────────────────────────────────────────────
@@ -1091,7 +1125,7 @@ function esc(str) {
   await loadHistory();
   render();
   renderHistory();
-  startPolling();
+  startStreaming();
 })();
 </script>
 </body>
