@@ -4,6 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Team Tracker</title>
+
+<!--
+  ╔══════════════════════════════════════════════════════════════╗
+  ║  GLOBAL HISTORY SETUP — Firebase Realtime Database           ║
+  ║                                                              ║
+  ║  1. Go to https://console.firebase.google.com/               ║
+  ║  2. Create a new project (free)                              ║
+  ║  3. Build → Realtime Database → Create Database              ║
+  ║  4. Start in TEST MODE (allows all reads/writes)             ║
+  ║  5. Copy your database URL (looks like:                      ║
+  ║     https://your-project-default-rtdb.firebaseio.com)        ║
+  ║  6. Replace FIREBASE_URL below with your database URL        ║
+  ╚══════════════════════════════════════════════════════════════╝
+-->
+<script>
+  const FIREBASE_URL = 'https://team-tracker-39b49-default-rtdb.firebaseio.com';
+  // ↑↑↑ REPLACE THIS WITH YOUR FIREBASE DATABASE URL ↑↑↑
+</script>
+
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -46,7 +65,23 @@
   header h1 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.3px; }
   header h1 span { color: var(--accent); }
 
-  .header-actions { display: flex; gap: 10px; }
+  .header-actions { display: flex; gap: 10px; align-items: center; }
+
+  /* SYNC INDICATOR */
+  .sync-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s;
+    flex-shrink: 0;
+  }
+  .sync-dot.connected { background: var(--accent2); box-shadow: 0 0 6px rgba(110,231,183,0.5); }
+  .sync-dot.syncing { background: var(--home); animation: pulse 0.6s infinite alternate; }
+  .sync-dot.error { background: var(--danger); }
+
+  @keyframes pulse { from { opacity: 1; } to { opacity: 0.4; } }
+
+  .sync-label { font-size: 0.75rem; color: var(--muted); }
 
   /* BUTTONS */
   button {
@@ -136,8 +171,6 @@
     white-space: nowrap;
   }
 
-  .loc-actions { display: flex; gap: 6px; }
-
   .employee-list {
     display: flex;
     flex-direction: column;
@@ -203,13 +236,12 @@
   }
 
   #self-service h2 {
-    font-size: 0.95rem;
+    font-size: 0.8rem;
     font-weight: 700;
     margin-bottom: 16px;
     color: var(--accent2);
     letter-spacing: 0.3px;
     text-transform: uppercase;
-    font-size: 0.8rem;
   }
 
   .self-form {
@@ -241,6 +273,79 @@
   }
 
   select option { background: var(--surface2); }
+
+  /* ── GLOBAL HISTORY PANEL ── */
+  #history-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+  }
+
+  #history-panel h2 {
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--accent);
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  #history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--surface2);
+    border-radius: 10px;
+    font-size: 0.83rem;
+    animation: slideIn 0.3s ease;
+    border-left: 3px solid transparent;
+  }
+
+  .history-item.type-checkin { border-left-color: var(--accent2); }
+  .history-item.type-add    { border-left-color: var(--accent); }
+  .history-item.type-remove { border-left-color: var(--danger); }
+
+  .history-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.72rem;
+    flex-shrink: 0;
+    color: #fff;
+  }
+
+  .history-msg { flex: 1; color: var(--text); }
+  .history-msg strong { color: var(--accent2); }
+
+  .history-time {
+    font-size: 0.74rem;
+    color: var(--muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .history-empty {
+    color: var(--muted);
+    font-size: 0.84rem;
+    text-align: center;
+    padding: 18px;
+  }
 
   /* MODALS */
   .modal-backdrop {
@@ -279,7 +384,7 @@
 
   .modal-footer { display: flex; gap: 10px; justify-content: flex-end; }
 
-  /* MANAGE LIST (employees & locations) */
+  /* MANAGE LIST */
   .manage-list { display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; }
 
   .manage-item {
@@ -324,15 +429,10 @@
     to   { opacity: 1; transform: translateX(0); }
   }
 
-  .toast.fade-out {
-    animation: toastOut 0.4s ease forwards;
-  }
+  .toast.fade-out { animation: toastOut 0.4s ease forwards; }
 
-  @keyframes toastOut {
-    to { opacity: 0; transform: translateX(20px); }
-  }
+  @keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
 
-  /* HOME STAR INDICATOR */
   .home-star {
     font-size: 1.1rem;
     cursor: pointer;
@@ -343,17 +443,6 @@
   .home-star.active { opacity: 1; }
   .home-star:hover { transform: scale(1.2); }
 
-  /* CHECKBOX ROW */
-  .checkbox-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.88rem;
-  }
-  .checkbox-row input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--home); }
-
-  /* Emoji color dots for avatars (cycle through palette) */
-
   .no-employees {
     color: var(--muted);
     font-size: 0.85rem;
@@ -362,6 +451,18 @@
   }
 
   .loc-icon { font-size: 1.2rem; }
+
+  /* Config warning banner */
+  #config-warning {
+    background: rgba(239,68,68,0.12);
+    border: 1px solid var(--danger);
+    border-radius: 10px;
+    padding: 14px 20px;
+    font-size: 0.85rem;
+    display: none;
+  }
+  #config-warning.show { display: block; }
+  #config-warning a { color: var(--accent); }
 
   @media (max-width: 600px) {
     header { padding: 14px 16px; }
@@ -376,12 +477,22 @@
 <header>
   <h1>Team <span>Tracker</span></h1>
   <div class="header-actions">
+    <div class="sync-dot" id="sync-dot" title="Connection status"></div>
+    <span class="sync-label" id="sync-label">Connecting…</span>
     <button class="btn-ghost" onclick="openModal('modal-locations')">📍 Locations</button>
     <button class="btn-primary" onclick="openModal('modal-employees')">👥 Employees</button>
   </div>
 </header>
 
 <main>
+  <!-- Config warning -->
+  <div id="config-warning">
+    ⚠️ <strong>Firebase not configured.</strong> Replace <code>FIREBASE_URL</code> at the top of the file with your database URL.
+    See the setup comments in the HTML source, or visit
+    <a href="https://console.firebase.google.com/" target="_blank">console.firebase.google.com</a>.
+    <br><br>Running in <strong>local-only mode</strong> until configured — data won't sync between users.
+  </div>
+
   <!-- Self-service update bar -->
   <section id="self-service">
     <h2>📣 Update Your Location</h2>
@@ -408,6 +519,17 @@
   <p id="empty-msg" style="color:var(--muted);text-align:center;display:none;">
     Add some locations and employees to get started!
   </p>
+
+  <!-- Global History -->
+  <section id="history-panel">
+    <h2>
+      <span>🕓 Global Activity History</span>
+      <button class="btn-ghost btn-sm" onclick="clearHistory()" style="font-size:0.72rem;opacity:0.6;">Clear</button>
+    </h2>
+    <div id="history-list">
+      <div class="history-empty">No activity yet.</div>
+    </div>
+  </section>
 </main>
 
 <!-- Toast container -->
@@ -448,28 +570,178 @@
   </div>
 </div>
 
-<audio id="snd-checkin" preload="auto"></audio>
-
 <script>
+// ═══════════════════════════════════════════════════════════════
+//  FIREBASE REALTIME DATABASE — Global sync
+//  Docs: https://firebase.google.com/docs/database/web/read-and-write
+// ═══════════════════════════════════════════════════════════════
+
+const DB_STATE_URL   = FIREBASE_URL + '/state.json';
+const DB_HISTORY_URL = FIREBASE_URL + '/history.json';
+const CONFIGURED     = FIREBASE_URL && !FIREBASE_URL.includes('YOUR_PROJECT');
+
+// Show warning if not configured
+if (!CONFIGURED) {
+  document.getElementById('config-warning').classList.add('show');
+}
+
 // ─── State ────────────────────────────────────────────────────
 const COLORS = ['#4f6ef7','#6ee7b7','#f59e0b','#ec4899','#8b5cf6','#10b981','#f97316','#06b6d4','#ef4444','#84cc16'];
 
-let state = {
-  employees: [],  // { id, name, locationId | null }
-  locations: [],  // { id, name, isHome }
-};
+let state = { employees: [], locations: [] };
+let history = [];  // global activity log
 
-function save() {
-  localStorage.setItem('teamtracker', JSON.stringify(state));
+// ─── Sync helpers ─────────────────────────────────────────────
+function setSyncStatus(status) {
+  const dot   = document.getElementById('sync-dot');
+  const label = document.getElementById('sync-label');
+  dot.className = 'sync-dot ' + status;
+  label.textContent = { connected: 'Live', syncing: 'Syncing…', error: 'Offline', '': 'Connecting…' }[status] || '';
 }
 
-function load() {
+async function dbGet(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Firebase GET failed: ' + res.status);
+  return res.json();
+}
+
+async function dbPut(url, data) {
+  setSyncStatus('syncing');
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error('Firebase PUT failed: ' + res.status);
+  setSyncStatus('connected');
+  return res.json();
+}
+
+async function dbPost(url, data) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error('Firebase POST failed: ' + res.status);
+  return res.json();
+}
+
+// ─── Persistence: save/load (Firebase or localStorage fallback) ─
+async function save() {
+  if (!CONFIGURED) {
+    localStorage.setItem('teamtracker', JSON.stringify(state));
+    return;
+  }
   try {
-    const raw = localStorage.getItem('teamtracker');
-    if (raw) state = JSON.parse(raw);
-  } catch(e) {}
+    await dbPut(DB_STATE_URL, state);
+  } catch(e) {
+    console.error('Save failed:', e);
+    setSyncStatus('error');
+    toast('⚠️ Sync failed — changes saved locally only.');
+    localStorage.setItem('teamtracker', JSON.stringify(state));
+  }
 }
 
+async function load() {
+  if (!CONFIGURED) {
+    try {
+      const raw = localStorage.getItem('teamtracker');
+      if (raw) state = JSON.parse(raw);
+    } catch(e) {}
+    return;
+  }
+  try {
+    setSyncStatus('');
+    const data = await dbGet(DB_STATE_URL);
+    if (data) {
+      state = {
+        employees: data.employees || [],
+        locations: data.locations || []
+      };
+    }
+    setSyncStatus('connected');
+  } catch(e) {
+    console.error('Load failed:', e);
+    setSyncStatus('error');
+    toast('⚠️ Could not connect to Firebase — running offline.');
+    try {
+      const raw = localStorage.getItem('teamtracker');
+      if (raw) state = JSON.parse(raw);
+    } catch(e2) {}
+  }
+}
+
+// ─── History: save/load ───────────────────────────────────────
+const MAX_HISTORY = 50;
+
+async function addHistoryEntry(entry) {
+  // entry = { type, msg, empId, ts }
+  history.unshift(entry);
+  if (history.length > MAX_HISTORY) history = history.slice(0, MAX_HISTORY);
+  renderHistory();
+
+  if (!CONFIGURED) return;
+  try {
+    // Save as a trimmed list
+    await dbPut(DB_HISTORY_URL, history);
+  } catch(e) {
+    console.error('History save failed:', e);
+  }
+}
+
+async function loadHistory() {
+  if (!CONFIGURED) return;
+  try {
+    const data = await dbGet(DB_HISTORY_URL);
+    if (Array.isArray(data)) {
+      history = data;
+      renderHistory();
+    }
+  } catch(e) {
+    console.error('History load failed:', e);
+  }
+}
+
+async function clearHistory() {
+  history = [];
+  renderHistory();
+  if (!CONFIGURED) return;
+  try { await dbPut(DB_HISTORY_URL, []); } catch(e) {}
+}
+
+// ─── Real-time polling (Firebase REST SSE isn't in free tier) ──
+// Poll every 8 seconds to pick up changes from other users
+let pollTimer = null;
+
+function startPolling() {
+  if (!CONFIGURED) return;
+  pollTimer = setInterval(async () => {
+    try {
+      const [newState, newHistory] = await Promise.all([
+        dbGet(DB_STATE_URL),
+        dbGet(DB_HISTORY_URL)
+      ]);
+      if (newState) {
+        state = {
+          employees: newState.employees || [],
+          locations: newState.locations || []
+        };
+        render();
+      }
+      if (Array.isArray(newHistory)) {
+        const prevLen = history.length;
+        history = newHistory;
+        if (history.length !== prevLen) renderHistory();
+      }
+      setSyncStatus('connected');
+    } catch(e) {
+      setSyncStatus('error');
+    }
+  }, 8000);
+}
+
+// ─── Utilities ────────────────────────────────────────────────
 function uid() { return Math.random().toString(36).slice(2,9); }
 
 function initials(name) {
@@ -479,6 +751,16 @@ function initials(name) {
 function colorFor(id) {
   const idx = [...id].reduce((a,c) => a + c.charCodeAt(0), 0) % COLORS.length;
   return COLORS[idx];
+}
+
+function relativeTime(ts) {
+  const diff = Date.now() - ts;
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h/24)}d ago`;
 }
 
 // ─── Sounds ───────────────────────────────────────────────────
@@ -494,8 +776,6 @@ function playCheckin() {
   try {
     const ac = getAudioCtx();
     const t = ac.currentTime;
-
-    // Two-note chime: C5 → E5
     [[523.25, 0], [659.25, 0.18]].forEach(([freq, delay]) => {
       const osc = ac.createOscillator();
       const gain = ac.createGain();
@@ -656,32 +936,55 @@ function renderLocationList() {
   `).join('');
 }
 
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  if (!history.length) {
+    list.innerHTML = '<div class="history-empty">No activity yet.</div>';
+    return;
+  }
+  list.innerHTML = history.map(h => `
+    <div class="history-item type-${h.type}">
+      ${h.empId
+        ? `<div class="history-avatar" style="background:${colorFor(h.empId)}">${h.initials || '?'}</div>`
+        : `<div class="history-avatar" style="background:var(--surface2);color:var(--muted);font-size:1rem;">📍</div>`
+      }
+      <span class="history-msg">${h.msg}</span>
+      <span class="history-time">${relativeTime(h.ts)}</span>
+    </div>
+  `).join('');
+}
+
 // ─── Actions ──────────────────────────────────────────────────
-function addEmployee() {
+async function addEmployee() {
   const input = document.getElementById('new-employee-name');
   const name = input.value.trim();
   if (!name) return;
   if (state.employees.some(e => e.name.toLowerCase() === name.toLowerCase())) {
     toast('Employee already exists.'); return;
   }
-  state.employees.push({ id: uid(), name, locationId: null });
-  save();
+  const emp = { id: uid(), name, locationId: null };
+  state.employees.push(emp);
+  await save();
+  await addHistoryEntry({ type: 'add', msg: `<strong>${esc(name)}</strong> was added to the team.`, empId: emp.id, initials: initials(name), ts: Date.now() });
   render();
   input.value = '';
   playAdd();
   toast(`${name} added!`);
 }
 
-function removeEmployee(id) {
+async function removeEmployee(id) {
   const emp = state.employees.find(e => e.id === id);
   state.employees = state.employees.filter(e => e.id !== id);
-  save();
+  await save();
+  if (emp) {
+    await addHistoryEntry({ type: 'remove', msg: `<strong>${esc(emp.name)}</strong> was removed from the team.`, empId: emp.id, initials: initials(emp.name), ts: Date.now() });
+  }
   render();
   playRemove();
   if (emp) toast(`${emp.name} removed.`);
 }
 
-function addLocation() {
+async function addLocation() {
   const input = document.getElementById('new-location-name');
   const name = input.value.trim();
   if (!name) return;
@@ -690,33 +993,39 @@ function addLocation() {
   }
   const isFirst = state.locations.length === 0;
   state.locations.push({ id: uid(), name, isHome: isFirst });
-  save();
+  await save();
+  await addHistoryEntry({ type: 'add', msg: `Location <strong>${esc(name)}</strong> was added${isFirst ? ' and set as Home 🏠' : ''}.`, empId: null, ts: Date.now() });
   render();
   input.value = '';
   playAdd();
   toast(`${name} added!${isFirst ? ' (set as Home)' : ''}`);
 }
 
-function removeLocation(id) {
+async function removeLocation(id) {
   const loc = state.locations.find(l => l.id === id);
-  // Unassign employees at this location
   state.employees.forEach(e => { if (e.locationId === id) e.locationId = null; });
   state.locations = state.locations.filter(l => l.id !== id);
-  save();
+  await save();
+  if (loc) {
+    await addHistoryEntry({ type: 'remove', msg: `Location <strong>${esc(loc.name)}</strong> was removed.`, empId: null, ts: Date.now() });
+  }
   render();
   playRemove();
   if (loc) toast(`${loc.name} removed.`);
 }
 
-function setHome(id) {
+async function setHome(id) {
   state.locations.forEach(l => l.isHome = (l.id === id));
-  save();
-  render();
+  await save();
   const loc = state.locations.find(l => l.id === id);
-  if (loc) toast(`${loc.name} is now Home 🏠`);
+  if (loc) {
+    await addHistoryEntry({ type: 'add', msg: `<strong>${esc(loc.name)}</strong> was set as the Home location 🏠.`, empId: null, ts: Date.now() });
+    toast(`${loc.name} is now Home 🏠`);
+  }
+  render();
 }
 
-function updateEmployeeLocation() {
+async function updateEmployeeLocation() {
   const empId = document.getElementById('sel-employee').value;
   const locId = document.getElementById('sel-location').value;
   if (!empId || !locId) { toast('Please select both an employee and a location.'); return; }
@@ -726,8 +1035,19 @@ function updateEmployeeLocation() {
 
   if (emp && emp.locationId === locId) { toast(`${emp.name} is already at ${loc.name}.`); return; }
 
+  const prevLoc = state.locations.find(l => l.id === emp.locationId);
   emp.locationId = locId;
-  save();
+  await save();
+
+  const fromStr = prevLoc ? ` from <strong>${esc(prevLoc.name)}</strong>` : '';
+  await addHistoryEntry({
+    type: 'checkin',
+    msg: `<strong>${esc(emp.name)}</strong> checked in at <strong>${esc(loc.name)}</strong>${loc.isHome ? ' 🏠' : ''}${fromStr}.`,
+    empId: emp.id,
+    initials: initials(emp.name),
+    ts: Date.now()
+  });
+
   render();
   playCheckin();
   toast(`${emp.name} checked in at ${loc.name}${loc.isHome ? ' 🏠' : ''}!`);
@@ -743,7 +1063,6 @@ function closeModal(id) {
   document.getElementById(id).classList.remove('open');
 }
 
-// Close on backdrop click
 document.querySelectorAll('.modal-backdrop').forEach(el => {
   el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
 });
@@ -767,8 +1086,13 @@ function esc(str) {
 }
 
 // ─── Init ─────────────────────────────────────────────────────
-load();
-render();
+(async () => {
+  await load();
+  await loadHistory();
+  render();
+  renderHistory();
+  startPolling();
+})();
 </script>
 </body>
 </html>
