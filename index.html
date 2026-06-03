@@ -367,6 +367,30 @@ textarea:focus { outline: none; border-color: var(--accent); }
 
 #empty-msg { color: var(--muted); text-align: center; padding: 40px 0 20px; font-size: 0.88rem; line-height: 1.8; grid-column: 1/-1; }
 .divider { height: 1px; background: var(--border); }
+
+/* Location list sortable */
+.loc-manage-item {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface2); border-radius: 10px; padding: 10px 13px; gap: 8px;
+  transition: box-shadow .15s, opacity .15s;
+  touch-action: none;
+}
+.loc-manage-item.dragging { opacity: .4; box-shadow: 0 4px 20px rgba(0,0,0,.5); }
+.loc-manage-item.drag-over { box-shadow: 0 0 0 2px var(--accent); }
+.drag-handle { font-size: 1rem; color: var(--muted); cursor: grab; padding: 0 4px; flex-shrink: 0; user-select: none; }
+.drag-handle:active { cursor: grabbing; }
+.loc-edit-input {
+  background: transparent; border: none; border-bottom: 1px solid var(--accent);
+  color: var(--text); font-size: 0.88rem; font-weight: 700; font-family: inherit;
+  width: 100%; outline: none; padding: 1px 2px;
+}
+.loc-item-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+.btn-icon { background: none; border: none; font-size: 1rem; padding: 4px 6px; border-radius: 6px; cursor: pointer; color: var(--muted); transition: color .15s, background .15s; }
+.btn-icon:hover { background: var(--surface3); color: var(--text); }
+.btn-icon.danger:hover { color: var(--danger); }
+
+/* Announcement timestamp */
+.ann-time { font-size: 0.65rem; color: var(--muted); margin-top: 3px; }
 </style>
 </head>
 <body>
@@ -414,6 +438,7 @@ textarea:focus { outline: none; border-color: var(--accent); }
       <div class="ann-body">
         <div class="ann-label">Announcement</div>
         <div class="ann-msg" id="ann-text"></div>
+        <div class="ann-time" id="ann-time"></div>
       </div>
       <button class="ann-dismiss" onclick="dismissAnnouncement()">Got it</button>
     </div>
@@ -882,17 +907,109 @@ function renderEmployeeList() {
 function renderLocationList() {
   const list=document.getElementById('location-manage-list');
   if(!state.locations.length){list.innerHTML='<div class="no-items">No locations yet.</div>';return;}
-  list.innerHTML=state.locations.map(loc=>`
-    <div class="manage-item">
-      <div class="manage-item-info">
-        <span style="font-size:1.1rem">${loc.isHome?'🏠':'📍'}</span>
-        <div><div class="manage-item-name">${esc(loc.name)}</div>${loc.isHome?'<div class="manage-item-sub">Home base</div>':''}</div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <span class="home-star ${loc.isHome?'active':''}" onclick="setHome('${loc.id}')">⭐</span>
-        <button class="btn-danger btn-sm" onclick="removeLocation('${loc.id}')">Remove</button>
+  list.innerHTML=state.locations.map((loc,i)=>`
+    <div class="loc-manage-item" data-locid="${loc.id}" draggable="true">
+      <span class="drag-handle" title="Drag to reorder">⠿</span>
+      <span style="font-size:1rem;flex-shrink:0">${loc.isHome?'🏠':'📍'}</span>
+      <input class="loc-edit-input" value="${esc(loc.name)}" 
+        onblur="renameLocation('${loc.id}',this.value)"
+        onkeydown="if(event.key==='Enter')this.blur()"
+        style="flex:1;min-width:0;">
+      <div class="loc-item-actions">
+        <span class="home-star ${loc.isHome?'active':''}" title="Set as Home" onclick="setHome('${loc.id}')">⭐</span>
+        <button class="btn-icon danger" title="Remove" onclick="removeLocation('${loc.id}')">🗑</button>
       </div>
     </div>`).join('');
+  initDragSort();
+}
+
+function initDragSort() {
+  const list = document.getElementById('location-manage-list');
+  let dragSrc = null;
+
+  list.querySelectorAll('.loc-manage-item').forEach(item => {
+    item.addEventListener('dragstart', e => {
+      dragSrc = item;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      list.querySelectorAll('.loc-manage-item').forEach(i=>i.classList.remove('drag-over'));
+    });
+    item.addEventListener('dragover', e => {
+      e.preventDefault(); e.dataTransfer.dropEffect='move';
+      if (item !== dragSrc) {
+        list.querySelectorAll('.loc-manage-item').forEach(i=>i.classList.remove('drag-over'));
+        item.classList.add('drag-over');
+      }
+    });
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      if (dragSrc && dragSrc !== item) {
+        // Reorder state.locations
+        const ids = [...list.querySelectorAll('.loc-manage-item')].map(el=>el.dataset.locid);
+        const srcId = dragSrc.dataset.locid;
+        const dstId = item.dataset.locid;
+        const srcIdx = ids.indexOf(srcId), dstIdx = ids.indexOf(dstId);
+        const srcLoc = state.locations.find(l=>l.id===srcId);
+        state.locations = state.locations.filter(l=>l.id!==srcId);
+        const newDstIdx = state.locations.findIndex(l=>l.id===dstId);
+        const insertAt = srcIdx < dstIdx ? newDstIdx+1 : newDstIdx;
+        state.locations.splice(insertAt, 0, srcLoc);
+        renderLocationList(); renderBoard(); renderAllSelects(); renderMoveAll();
+        saveState();
+      }
+    });
+  });
+
+  // Touch drag support
+  let touchSrc = null, touchClone = null, touchOffX = 0, touchOffY = 0;
+  list.querySelectorAll('.drag-handle').forEach(handle => {
+    handle.addEventListener('touchstart', e => {
+      const item = handle.closest('.loc-manage-item');
+      touchSrc = item;
+      const rect = item.getBoundingClientRect();
+      const t = e.touches[0];
+      touchOffX = t.clientX - rect.left;
+      touchOffY = t.clientY - rect.top;
+      touchClone = item.cloneNode(true);
+      touchClone.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;opacity:.7;pointer-events:none;z-index:9999;border-radius:10px;background:var(--surface2);`;
+      document.body.appendChild(touchClone);
+      item.style.opacity = '.3';
+    }, {passive:true});
+
+    handle.addEventListener('touchmove', e => {
+      if (!touchClone) return;
+      e.preventDefault();
+      const t = e.touches[0];
+      touchClone.style.left = (t.clientX - touchOffX) + 'px';
+      touchClone.style.top  = (t.clientY - touchOffY) + 'px';
+      // Highlight target
+      list.querySelectorAll('.loc-manage-item').forEach(i=>i.classList.remove('drag-over'));
+      const elUnder = document.elementFromPoint(t.clientX, t.clientY)?.closest('.loc-manage-item');
+      if (elUnder && elUnder !== touchSrc) elUnder.classList.add('drag-over');
+    }, {passive:false});
+
+    handle.addEventListener('touchend', e => {
+      if (!touchClone) return;
+      const t = e.changedTouches[0];
+      const elUnder = document.elementFromPoint(t.clientX, t.clientY)?.closest('.loc-manage-item');
+      touchClone.remove(); touchClone = null;
+      if (touchSrc) touchSrc.style.opacity = '';
+      list.querySelectorAll('.loc-manage-item').forEach(i=>i.classList.remove('drag-over'));
+      if (elUnder && elUnder !== touchSrc && touchSrc) {
+        const srcId = touchSrc.dataset.locid, dstId = elUnder.dataset.locid;
+        const srcLoc = state.locations.find(l=>l.id===srcId);
+        state.locations = state.locations.filter(l=>l.id!==srcId);
+        const newDstIdx = state.locations.findIndex(l=>l.id===dstId);
+        state.locations.splice(newDstIdx, 0, srcLoc);
+        renderLocationList(); renderBoard(); renderAllSelects(); renderMoveAll();
+        saveState();
+      }
+      touchSrc = null;
+    });
+  });
 }
 
 function renderMoveAll() {
@@ -907,6 +1024,11 @@ function renderAnnouncement() {
   const key='ann_'+(announcement.id||'');
   if(localStorage.getItem(key)){bar.classList.remove('visible');return;}
   document.getElementById('ann-text').textContent=announcement.msg;
+  const annTimeEl = document.getElementById('ann-time');
+  if (annTimeEl && announcement.ts) {
+    const d = new Date(announcement.ts);
+    annTimeEl.textContent = 'Posted ' + d.toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+  }
   bar.classList.add('visible');
 }
 
@@ -994,6 +1116,15 @@ async function removeLocation(id) {
   state.locations=state.locations.filter(l=>l.id!==id);
   await saveState(); render(); playRemove();
   if(loc) toast(loc.name+' removed.');
+}
+
+async function renameLocation(id, newName) {
+  newName = newName.trim();
+  if (!newName) { renderLocationList(); return; }
+  const loc = state.locations.find(l=>l.id===id);
+  if (!loc || loc.name === newName) return;
+  loc.name = newName;
+  await saveState(); render();
 }
 
 async function setHome(id) {
