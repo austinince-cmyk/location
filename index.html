@@ -532,7 +532,7 @@ async function loadAll(){
           id:fe.id,
           name:fe.name,
           // Prefer Firebase locationId if it exists, otherwise fall back to local cache
-          locationId: fe.locationId||(le&&le.locationId)||null,
+          locationId: (fe.locationId!=null&&fe.locationId!=='')?fe.locationId:(le&&le.locationId)||null,
         };
       });
       state={employees:mergedEmps, locations:merged};
@@ -563,7 +563,7 @@ async function saveInroute(){try{await fbPut(DB.inroute,inroute);}catch(e){}}
 function startStreaming(){
   const ss=new EventSource(FIREBASE_URL+'/state.json?accept=text/event-stream');
   let ssR=false;
-  ss.addEventListener('put',e=>{try{if(!ssR){ssR=true;return;}const d=JSON.parse(e.data).data;if(!d)return;const sig=a=>JSON.stringify([...(a||[])].sort((x,y)=>x.id>y.id?1:-1).map(x=>x.id+'|'+(x.locationId||'')+'|'+(x.address||'')+'|'+(x.lat||'')));if(sig(d.employees)===sig(state.employees)&&sig(d.locations)===sig(state.locations))return;const remoteLocs=(d.locations||[]).map(rl=>{const local=state.locations.find(l=>l.id===rl.id||l.name===rl.name);return Object.assign({},rl,{address:rl.address||(local&&local.address)||'',lat:rl.lat||(local&&local.lat)||null,lng:rl.lng||(local&&local.lng)||null,emoji:rl.emoji||(local&&local.emoji)||'',});});const remoteEmps=(d.employees||[]).map(re=>{const local=state.employees.find(e=>e.id===re.id||e.name===re.name);return Object.assign({},re,{id:re.id||(local&&local.id)||uid(),locationId:re.locationId||(local&&local.locationId)||null,});});state={employees:remoteEmps,locations:remoteLocs};localStorage.setItem('tt_state',JSON.stringify(state));render();setSyncStatus('connected');}catch(err){}});
+  ss.addEventListener('put',e=>{try{if(!ssR){ssR=true;return;}const d=JSON.parse(e.data).data;if(!d)return;const sig=a=>JSON.stringify([...(a||[])].sort((x,y)=>x.id>y.id?1:-1).map(x=>x.id+'|'+(x.locationId||'')+'|'+(x.address||'')+'|'+(x.lat||'')));if(sig(d.employees)===sig(state.employees)&&sig(d.locations)===sig(state.locations))return;const remoteLocs=(d.locations||[]).map(rl=>{const local=state.locations.find(l=>l.id===rl.id||l.name===rl.name);return Object.assign({},rl,{address:rl.address||(local&&local.address)||'',lat:rl.lat||(local&&local.lat)||null,lng:rl.lng||(local&&local.lng)||null,emoji:rl.emoji||(local&&local.emoji)||'',});});const remoteEmps=(d.employees||[]).map(re=>{const local=state.employees.find(e=>e.id===re.id||e.name===re.name);return Object.assign({},re,{id:re.id||(local&&local.id)||uid(),locationId:(re.locationId!=null&&re.locationId!=='')?re.locationId:(local&&local.locationId)||null,});});state={employees:remoteEmps,locations:remoteLocs};localStorage.setItem('tt_state',JSON.stringify(state));render();setSyncStatus('connected');}catch(err){}});
   ss.onerror=()=>setSyncStatus('error');
   const hs=new EventSource(FIREBASE_URL+'/empHistory.json?accept=text/event-stream');let hsR=false;
   hs.addEventListener('put',e=>{try{if(!hsR){hsR=true;return;}const d=JSON.parse(e.data).data;if(d&&typeof d==='object'){empHistory=d;renderBoard();renderMapMarkers();}}catch(err){}});
@@ -780,56 +780,49 @@ function buildLeafletIcon(loc, people){
   });
 }
 
-// Collision avoidance: spread overlapping markers so they don't stack.
-// Uses pixel-aware distance at current zoom level.
-function offsetNearby(locations, allPositions){
-  const offsets = {};
-  if(!leafletMap) return offsets;
+// Collision avoidance: fixed lat/lng offsets (zoom-stable, pan-stable).
+// Groups markers within ~150m of each other and fans them outward.
+// Offsets are stored per-session so markers stay put during zoom/pan.
+const _locOffsets = {}; // locId -> {dlat, dlng} permanent offset for this session
 
-  // Project all positions to pixel space at current zoom
-  const pixels = {};
-  locations.forEach(loc => {
-    const pos = allPositions[loc.id];
-    if(!pos) return;
-    pixels[loc.id] = leafletMap.latLngToContainerPoint([pos.lat, pos.lng]);
-  });
-
-  // Group markers within 60px of each other
-  const THRESH_PX = 60;
+function computeOffsets(locations, allPositions){
+  // ~150m in degrees lat (rough, good enough for grouping)
+  const THRESH = 0.0014;
   const used = new Set();
   const groups = [];
-  const locs = locations.filter(l => pixels[l.id]);
+  const locs = locations.filter(l => allPositions[l.id]);
 
   locs.forEach((loc, i) => {
     if(used.has(loc.id)) return;
     const group = [loc.id];
     used.add(loc.id);
-    locs.forEach((loc2, j) => {
-      if(i===j || used.has(loc2.id)) return;
-      const p1 = pixels[loc.id], p2 = pixels[loc2.id];
-      const dx = p1.x-p2.x, dy = p1.y-p2.y;
-      if(Math.sqrt(dx*dx+dy*dy) < THRESH_PX){ group.push(loc2.id); used.add(loc2.id); }
+    const p1 = allPositions[loc.id];
+    locs.forEach((loc2) => {
+      if(used.has(loc2.id)) return;
+      const p2 = allPositions[loc2.id];
+      const dlat = p1.lat - p2.lat, dlng = p1.lng - p2.lng;
+      if(Math.sqrt(dlat*dlat + dlng*dlng) < THRESH){
+        group.push(loc2.id); used.add(loc2.id);
+      }
     });
     if(group.length > 1) groups.push(group);
   });
 
-  // Spread group members outward from their centroid
   groups.forEach(group => {
     const n = group.length;
-    // Centroid in pixel space
-    const cx = group.reduce((s,id)=>s+pixels[id].x,0)/n;
-    const cy = group.reduce((s,id)=>s+pixels[id].y,0)/n;
-    const SPREAD_PX = Math.max(55, n * 28); // spread grows with group size
+    // Only assign offset if not already set for this session
     group.forEach((id, k) => {
-      const angle = (2*Math.PI*k/n) - Math.PI/2;
-      const tx = cx + SPREAD_PX * Math.cos(angle);
-      const ty = cy + SPREAD_PX * Math.sin(angle);
-      const latlng = leafletMap.containerPointToLatLng([tx, ty]);
-      offsets[id] = {lat: latlng.lat, lng: latlng.lng};
+      if(_locOffsets[id]) return;
+      const base = allPositions[id];
+      // Spread radius: ~120m in degrees, grows slightly with group size
+      const R = 0.0011 + (n - 2) * 0.0003;
+      const angle = (2 * Math.PI * k / n) - Math.PI / 2;
+      _locOffsets[id] = {
+        dlat: R * Math.sin(angle),
+        dlng: R * Math.cos(angle) / Math.cos(base.lat * Math.PI / 180)
+      };
     });
   });
-
-  return offsets;
 }
 
 function renderMapMarkers(){
@@ -849,8 +842,8 @@ function renderMapMarkers(){
     if(loc.lat && loc.lng) allPositions[loc.id] = {lat:loc.lat, lng:loc.lng};
   }
 
-  // Compute offsets for nearby markers so they don't stack
-  const offsets = offsetNearby(state.locations, allPositions);
+  // Compute stable lat/lng offsets for nearby markers
+  computeOffsets(state.locations, allPositions);
   const positions = [];
 
   for(const loc of state.locations){
@@ -859,9 +852,12 @@ function renderMapMarkers(){
       if(leafletMarkers[loc.id]){ leafletMarkers[loc.id].remove(); delete leafletMarkers[loc.id]; }
       continue;
     }
-    const pos = offsets[loc.id] || rawPos;
+    const off = _locOffsets[loc.id];
+    const pos = off
+      ? {lat: rawPos.lat + off.dlat, lng: rawPos.lng + off.dlng}
+      : rawPos;
     const people = state.employees.filter(e=>e.locationId===loc.id);
-    const icon = buildLeafletIcon(loc, people, !!offsets[loc.id]);
+    const icon = buildLeafletIcon(loc, people);
     const popup = buildPopupHTML(loc, people);
 
     if(leafletMarkers[loc.id]){
