@@ -886,15 +886,18 @@ function renderBoard() {
 }
 
 function renderAllSelects() {
-  // Mobile
   const sortedEmps = [...state.employees].sort((a,b)=>a.name.localeCompare(b.name));
-  syncSelect('sel-employee-m', sortedEmps, e=>`<option value="${e.id}">${esc(e.name)}</option>`, 'Who are you?');
-  syncSelect('sel-location-m',  state.locations,  l=>`<option value="${l.id}">${l.emoji||'📍'} ${esc(l.name)}</option>`, 'Where?');
-  // Desktop
-  syncSelect('sel-employee-d', sortedEmps, e=>`<option value="${e.id}">${esc(e.name)}</option>`, 'Who are you?');
-  syncSelect('sel-location-d',  state.locations,  l=>`<option value="${l.id}">${l.emoji||'📍'} ${esc(l.name)}</option>`, 'Where are you?');
+  // Non-managers only see themselves in the employee dropdown
+  const visibleEmps = isManager()
+    ? sortedEmps
+    : sortedEmps.filter(e=>e.name.toLowerCase()===(currentName||'').toLowerCase());
 
-  // Auto-select current user
+  syncSelect('sel-employee-m', visibleEmps, e=>`<option value="${e.id}">${esc(e.name)}</option>`, 'Who are you?');
+  syncSelect('sel-location-m', state.locations, l=>`<option value="${l.id}">${l.emoji||'📍'} ${esc(l.name)}</option>`, 'Where?');
+  syncSelect('sel-employee-d', visibleEmps, e=>`<option value="${e.id}">${esc(e.name)}</option>`, 'Who are you?');
+  syncSelect('sel-location-d', state.locations, l=>`<option value="${l.id}">${l.emoji||'📍'} ${esc(l.name)}</option>`, 'Where are you?');
+
+  // Auto-select current user (always, since they're likely the only option)
   ['sel-employee-m','sel-employee-d'].forEach(id => {
     const el=document.getElementById(id);
     if (!el.value && currentName) {
