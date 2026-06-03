@@ -485,13 +485,20 @@ const INROUTE_MS=5*60*1000;
 
 async function loadAll(){
   try{setSyncStatus('');const[s,h,a,ir]=await Promise.all([fbGet(DB.state),fbGet(DB.empHistory),fbGet(DB.announcement),fbGet(DB.inroute)]);
-  if(s)state={employees:s.employees||[],locations:s.locations||[]};
+  if(s){
+    console.log('[loadAll] raw Firebase locations:', JSON.stringify((s.locations||[]).map(l=>({name:l.name,lat:l.lat,lng:l.lng}))));
+    state={employees:s.employees||[],locations:s.locations||[]};
+  }
   if(h&&typeof h==='object'&&!Array.isArray(h))empHistory=h;
   if(a&&a.msg)announcement=a;
   if(ir&&typeof ir==='object')inroute=ir;
   setSyncStatus('connected');}catch(e){setSyncStatus('error');try{const r=localStorage.getItem('tt_state');if(r)state=JSON.parse(r);}catch(e2){}}
 }
-async function saveState(){try{await fbPut(DB.state,state);localStorage.setItem('tt_state',JSON.stringify(state));}catch(e){setSyncStatus('error');toast('⚠️ Save failed.');}}
+async function saveState(){
+  console.log('[saveState] locations with lat:', state.locations.map(l=>({name:l.name,lat:l.lat,lng:l.lng,addr:l.address})));
+  try{await fbPut(DB.state,state);localStorage.setItem('tt_state',JSON.stringify(state));}
+  catch(e){setSyncStatus('error');toast('⚠️ Save failed.');}
+}
 async function saveHistory(){try{await fbPut(DB.empHistory,empHistory);}catch(e){}}
 async function saveAnnouncement(){try{await fbPut(DB.announcement,announcement||null);}catch(e){}}
 async function saveInroute(){try{await fbPut(DB.inroute,inroute);}catch(e){}}
