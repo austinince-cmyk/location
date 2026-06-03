@@ -11,258 +11,385 @@
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
 :root {
-  --bg: #0f1117;
-  --surface: #1a1d27;
-  --surface2: #22263a;
-  --border: #2e3354;
+  --bg: #0d0f18;
+  --surface: #161923;
+  --surface2: #1e2235;
+  --surface3: #252a42;
+  --border: #2a3050;
   --accent: #4f6ef7;
   --accent2: #6ee7b7;
   --home: #f59e0b;
   --danger: #ef4444;
-  --text: #e2e8f0;
-  --muted: #64748b;
+  --text: #e8eaf2;
+  --muted: #5a6280;
   --radius: 16px;
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --sb: env(safe-area-inset-bottom, 0px);
+  --st: env(safe-area-inset-top, 0px);
 }
 
 html, body { height: 100%; }
-
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; display: flex; flex-direction: column;
   overscroll-behavior: none;
 }
 
-/* ── HEADER ─────────────────────────────────────────────────── */
+/* ── HEADER ────────────────────────────────────────────────── */
 header {
-  padding: 14px 16px;
-  padding-top: max(14px, env(safe-area-inset-top));
+  padding: 12px 16px;
+  padding-top: max(12px, var(--st));
   display: flex; align-items: center; justify-content: space-between;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--surface); border-bottom: 1px solid var(--border);
   position: sticky; top: 0; z-index: 100;
 }
-header h1 { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.4px; }
+.logo { display: flex; align-items: center; gap: 8px; }
+.logo-icon { font-size: 1.2rem; }
+header h1 { font-size: 1.05rem; font-weight: 800; letter-spacing: -0.3px; }
 header h1 span { color: var(--accent); }
-.header-right { display: flex; align-items: center; gap: 10px; }
+.header-right { display: flex; align-items: center; gap: 8px; }
 
-.sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; transition: background 0.3s; }
-.sync-dot.connected { background: var(--accent2); box-shadow: 0 0 5px rgba(110,231,183,0.6); }
-.sync-dot.syncing { background: var(--home); animation: blink 0.6s infinite alternate; }
+.sync-pill {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 4px 10px; font-size: 0.7rem; color: var(--muted);
+}
+.sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); flex-shrink: 0; transition: background 0.3s; }
+.sync-dot.connected { background: var(--accent2); box-shadow: 0 0 4px rgba(110,231,183,0.7); }
+.sync-dot.syncing { background: var(--home); animation: blink .6s infinite alternate; }
 .sync-dot.error { background: var(--danger); }
-@keyframes blink { to { opacity: 0.3; } }
+@keyframes blink { to { opacity: .3; } }
 
 .user-pill {
-  display: flex; align-items: center; gap: 7px;
+  display: flex; align-items: center; gap: 6px;
   background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 20px; padding: 5px 12px 5px 7px;
-  font-size: 0.78rem; font-weight: 600; cursor: pointer;
-  transition: background 0.15s;
+  border-radius: 20px; padding: 4px 10px 4px 5px;
+  font-size: 0.78rem; font-weight: 700; cursor: pointer; transition: background .15s;
 }
-.user-pill:active { background: var(--border); }
-.u-dot { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 800; color: #fff; }
+.user-pill:active { background: var(--surface3); }
+.u-dot { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.62rem; font-weight: 900; color: #fff; flex-shrink: 0; }
 
-/* ── BUTTONS ─────────────────────────────────────────────────── */
-button {
-  cursor: pointer; border: none; font-family: inherit;
-  font-size: 0.9rem; font-weight: 700; border-radius: 12px;
-  padding: 14px 20px; transition: all 0.15s; touch-action: manipulation;
-}
-.btn-primary { background: var(--accent); color: #fff; }
-.btn-primary:active { background: #3a56d4; transform: scale(0.97); }
-.btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-.btn-ghost:active { background: var(--border); }
-.btn-danger { background: var(--danger); color: #fff; }
+/* ── BUTTONS ───────────────────────────────────────────────── */
+button { cursor: pointer; border: none; font-family: inherit; font-weight: 700; border-radius: 12px; transition: all .15s; touch-action: manipulation; }
+.btn-primary { background: var(--accent); color: #fff; font-size: 0.9rem; padding: 13px 20px; }
+.btn-primary:active { background: #3a56d4; transform: scale(.97); }
+.btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); font-size: 0.9rem; padding: 13px 20px; }
+.btn-ghost:active { background: var(--surface3); }
+.btn-danger { background: var(--danger); color: #fff; font-size: 0.9rem; padding: 13px 20px; }
 .btn-danger:active { background: #b91c1c; }
-.btn-warning { background: var(--home); color: #000; font-weight: 800; }
+.btn-warning { background: var(--home); color: #000; font-size: 0.9rem; padding: 13px 20px; font-weight: 800; }
 .btn-warning:active { background: #d97706; }
-.btn-sm { padding: 8px 14px; font-size: 0.8rem; border-radius: 8px; }
+.btn-sm { padding: 7px 13px; font-size: 0.78rem; border-radius: 8px; }
 .btn-full { width: 100%; display: block; text-align: center; }
 
-/* ── MAIN ────────────────────────────────────────────────────── */
-main {
-  flex: 1; padding: 16px;
-  padding-bottom: calc(130px + var(--safe-bottom));
-  display: flex; flex-direction: column; gap: 14px;
+/* ── PAGE LAYOUT ───────────────────────────────────────────── */
+.page-wrap {
+  flex: 1; display: flex; flex-direction: column;
+  padding-bottom: calc(80px + var(--sb));
   overflow-y: auto;
 }
 
-/* ── ANNOUNCEMENT ────────────────────────────────────────────── */
+/* Desktop: side-by-side */
+@media (min-width: 768px) {
+  .page-wrap {
+    flex-direction: row; align-items: flex-start;
+    max-width: 1200px; margin: 0 auto; width: 100%;
+    padding: 24px 24px calc(24px + var(--sb));
+    gap: 24px;
+  }
+  .board-col { flex: 1; min-width: 0; }
+  .sidebar-col {
+    width: 300px; flex-shrink: 0;
+    position: sticky; top: 76px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+}
+
+/* ── MAIN CONTENT (mobile) ─────────────────────────────────── */
+.board-col { flex: 1; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+@media (min-width: 768px) { .board-col { padding: 0; } }
+
+/* ── ANNOUNCEMENT ──────────────────────────────────────────── */
 #announcement-bar {
-  background: linear-gradient(135deg, rgba(79,110,247,0.15), rgba(110,231,183,0.08));
+  background: linear-gradient(135deg, rgba(79,110,247,.14), rgba(110,231,183,.07));
   border: 1px solid var(--accent); border-radius: var(--radius);
-  padding: 14px 16px; display: none; gap: 12px; align-items: flex-start;
+  padding: 13px 15px; display: none; gap: 10px; align-items: flex-start;
 }
 #announcement-bar.visible { display: flex; }
-.ann-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 1px; }
+.ann-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 2px; }
 .ann-body { flex: 1; }
-.ann-label { font-size: 0.68rem; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-.ann-msg { font-size: 0.88rem; line-height: 1.45; }
-.ann-dismiss { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 8px 14px; font-size: 0.78rem; font-weight: 700; cursor: pointer; flex-shrink: 0; touch-action: manipulation; }
+.ann-label { font-size: 0.65rem; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 3px; }
+.ann-msg { font-size: 0.85rem; line-height: 1.45; }
+.ann-dismiss { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 7px 12px; font-size: 0.75rem; font-weight: 700; cursor: pointer; flex-shrink: 0; align-self: center; touch-action: manipulation; }
 .ann-dismiss:active { background: #3a56d4; }
 
-/* ── BOARD ───────────────────────────────────────────────────── */
-#board { display: flex; flex-direction: column; gap: 10px; }
+/* ── BOARD GRID ────────────────────────────────────────────── */
+#board {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+@media (min-width: 600px) and (max-width: 767px) {
+  #board { grid-template-columns: repeat(3, 1fr); }
+}
+@media (min-width: 768px) {
+  #board { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+}
+@media (min-width: 1024px) {
+  #board { grid-template-columns: repeat(3, 1fr); }
+}
 
+/* ── LOCATION CARD ─────────────────────────────────────────── */
 .location-card {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 14px 16px;
+  border-radius: var(--radius); padding: 13px 13px 14px;
+  display: flex; flex-direction: column; gap: 10px;
+  transition: border-color .2s;
 }
-.location-card.is-home { border-color: var(--home); box-shadow: 0 0 20px rgba(245,158,11,0.1); }
-
-.loc-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.loc-name { font-size: 0.95rem; font-weight: 800; display: flex; align-items: center; gap: 7px; }
-.loc-count { font-size: 0.75rem; color: var(--muted); background: var(--surface2); padding: 3px 8px; border-radius: 20px; }
-.home-badge { font-size: 0.6rem; font-weight: 800; background: var(--home); color: #000; padding: 2px 7px; border-radius: 20px; letter-spacing: 0.5px; text-transform: uppercase; }
-
-.employee-list { display: flex; flex-direction: column; gap: 6px; }
-
-.employee-chip {
-  display: flex; align-items: center; gap: 10px;
-  background: var(--surface2); border-radius: 10px; padding: 10px 12px;
-  animation: slideIn 0.22s ease; position: relative;
+.location-card.is-home {
+  border-color: var(--home);
+  box-shadow: 0 0 0 1px rgba(245,158,11,.15), 0 0 20px rgba(245,158,11,.07);
 }
-.employee-chip.home-chip { background: rgba(245,158,11,0.1); }
-@keyframes slideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 
-.avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.78rem; flex-shrink: 0; color: #fff; }
-.chip-name { flex: 1; font-size: 0.88rem; font-weight: 600; }
-.chip-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent2); flex-shrink: 0; }
-.chip-dot.home-dot { background: var(--home); }
+.loc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
+.loc-title { font-size: 0.82rem; font-weight: 800; line-height: 1.3; display: flex; flex-direction: column; gap: 3px; }
+.loc-icon-name { display: flex; align-items: center; gap: 5px; }
+.home-badge { font-size: 0.55rem; font-weight: 800; background: var(--home); color: #000; padding: 1px 6px; border-radius: 20px; letter-spacing: .4px; text-transform: uppercase; align-self: flex-start; }
+.loc-count-pill {
+  font-size: 0.68rem; font-weight: 700; color: var(--muted);
+  background: var(--surface2); border: 1px solid var(--border);
+  padding: 2px 7px; border-radius: 20px; white-space: nowrap; flex-shrink: 0;
+}
+.loc-count-pill.has-people { color: var(--accent2); border-color: rgba(110,231,183,.3); background: rgba(110,231,183,.06); }
 
-/* Tooltip */
-.chip-tooltip {
+/* Avatar cluster */
+.avatar-cluster {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  min-height: 36px; align-content: flex-start;
+}
+
+.person-bubble {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  cursor: default; position: relative;
+  animation: popIn .2s ease;
+}
+@keyframes popIn { from { opacity:0; transform: scale(.8); } to { opacity:1; transform: none; } }
+
+.person-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.72rem; font-weight: 900; color: #fff; flex-shrink: 0;
+  border: 2px solid transparent; transition: transform .15s, border-color .15s;
+}
+.person-bubble:hover .person-avatar,
+.person-bubble:focus .person-avatar { transform: scale(1.12); }
+.is-home .person-avatar { border-color: rgba(245,158,11,.5); }
+
+.person-name {
+  font-size: 0.6rem; font-weight: 600; color: var(--muted);
+  white-space: nowrap; max-width: 42px; overflow: hidden;
+  text-overflow: ellipsis; text-align: center; line-height: 1.1;
+}
+
+.empty-loc {
+  font-size: 0.75rem; color: var(--muted); padding: 6px 0;
+  display: flex; align-items: center; gap: 5px;
+}
+.empty-loc::before { content: ''; display: block; width: 20px; height: 1px; background: var(--border); }
+.empty-loc::after  { content: ''; display: block; flex:1;   height: 1px; background: var(--border); }
+
+/* Desktop tooltip on hover */
+.person-tooltip {
   display: none; position: absolute; bottom: calc(100% + 8px); left: 50%;
-  transform: translateX(-50%); background: #0d0f18; border: 1px solid var(--border);
-  border-radius: 10px; padding: 10px 14px; width: 220px; z-index: 300;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.6); pointer-events: none;
+  transform: translateX(-50%); background: #0a0c14; border: 1px solid var(--border);
+  border-radius: 10px; padding: 9px 12px; width: 200px; z-index: 300;
+  box-shadow: 0 8px 28px rgba(0,0,0,.7); pointer-events: none;
 }
-.chip-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: var(--border); }
-.employee-chip:hover .chip-tooltip { display: block; }
-.tip-title { font-size: 0.68rem; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 7px; }
-.tip-row { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--border); font-size: 0.78rem; }
+.person-tooltip::after { content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%); border:5px solid transparent; border-top-color: var(--border); }
+@media (hover: hover) {
+  .person-bubble:hover .person-tooltip { display: block; }
+}
+.tip-name { font-size: 0.8rem; font-weight: 800; margin-bottom: 7px; color: var(--text); }
+.tip-title { font-size: 0.62rem; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 5px; }
+.tip-row { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; border-bottom: 1px solid var(--border); font-size: 0.74rem; }
 .tip-row:last-child { border: none; }
-.tip-loc { color: var(--text); font-weight: 500; }
+.tip-loc { color: var(--text); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tip-time { color: var(--muted); white-space: nowrap; flex-shrink: 0; }
-.tip-empty { font-size: 0.78rem; color: var(--muted); text-align: center; padding: 2px 0; }
+.tip-empty { font-size: 0.74rem; color: var(--muted); text-align: center; padding: 2px 0; }
 
-.empty-loc { color: var(--muted); font-size: 0.82rem; text-align: center; padding: 8px 0; }
+/* ── SIDEBAR (desktop check-in panel) ──────────────────────── */
+.sidebar-col { display: none; }
+@media (min-width: 768px) { .sidebar-col { display: flex; } }
 
-/* ── BOTTOM BAR ──────────────────────────────────────────────── */
+.checkin-panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.panel-title { font-size: 0.72rem; font-weight: 800; color: var(--accent2); text-transform: uppercase; letter-spacing: .4px; }
+
+.manage-panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.manage-panel .panel-title { color: var(--muted); }
+.manage-btn {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 11px 13px;
+  font-size: 0.84rem; font-weight: 600; color: var(--text);
+  cursor: pointer; transition: background .15s; text-align: left; width: 100%;
+}
+.manage-btn:active, .manage-btn:hover { background: var(--surface3); }
+.manage-btn .mb-icon { font-size: 1rem; flex-shrink: 0; }
+.manage-btn.danger { color: var(--danger); }
+.manage-btn.warn { color: var(--home); }
+
+/* ── BOTTOM BAR (mobile only) ──────────────────────────────── */
 #bottom-bar {
   position: fixed; bottom: 0; left: 0; right: 0;
   background: var(--surface); border-top: 1px solid var(--border);
-  padding: 10px 16px; padding-bottom: calc(10px + var(--safe-bottom));
-  z-index: 90; display: flex; flex-direction: column; gap: 8px;
+  padding: 10px 14px; padding-bottom: calc(10px + var(--sb));
+  z-index: 90;
+  display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: center;
 }
-.checkin-selects { display: flex; gap: 8px; }
-.checkin-selects select { flex: 1; min-width: 0; }
-.bottom-actions { display: flex; gap: 8px; }
-.bottom-actions button { flex: 1; padding: 12px; font-size: 0.85rem; }
+@media (min-width: 768px) { #bottom-bar { display: none; } }
 
 select, input[type="text"] {
   background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 10px; color: var(--text); padding: 12px 14px;
-  font-size: 0.88rem; font-family: inherit; width: 100%;
-  -webkit-appearance: none; appearance: none; transition: border-color 0.15s;
+  border-radius: 10px; color: var(--text); padding: 11px 12px;
+  font-size: 0.85rem; font-family: inherit; width: 100%;
+  -webkit-appearance: none; appearance: none; transition: border-color .15s;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a6280'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center;
+  padding-right: 30px;
 }
-select:focus, input:focus { outline: none; border-color: var(--accent); }
+select:focus, input[type="text"]:focus { outline: none; border-color: var(--accent); }
 select option { background: var(--surface2); }
+#bottom-bar select { padding: 11px 28px 11px 11px; font-size: 0.8rem; }
+#bottom-bar .checkin-btn { padding: 11px 14px; font-size: 0.85rem; white-space: nowrap; border-radius: 10px; }
 
-/* ── NAME SCREEN ─────────────────────────────────────────────── */
+/* ── NAME SCREEN ───────────────────────────────────────────── */
 #name-screen {
   position: fixed; inset: 0; background: var(--bg);
   z-index: 400; display: flex; align-items: center; justify-content: center; padding: 24px;
 }
 .name-card {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: 20px; padding: 32px 24px; width: 100%; max-width: 340px;
+  border-radius: 22px; padding: 36px 28px; width: 100%; max-width: 360px;
   display: flex; flex-direction: column; gap: 20px; text-align: center;
 }
-.name-logo { font-size: 2.5rem; }
-.name-title { font-size: 1.4rem; font-weight: 800; }
-.name-sub { font-size: 0.85rem; color: var(--muted); line-height: 1.5; }
-.name-field { display: flex; flex-direction: column; gap: 8px; text-align: left; }
-.name-field label { font-size: 0.75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+.name-logo { font-size: 3rem; line-height: 1; }
+.name-title { font-size: 1.5rem; font-weight: 900; letter-spacing: -.4px; }
+.name-title span { color: var(--accent); }
+.name-sub { font-size: 0.84rem; color: var(--muted); line-height: 1.55; }
+.name-field { display: flex; flex-direction: column; gap: 7px; text-align: left; }
+.name-field label { font-size: 0.72rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+.name-field input { font-size: 1rem; padding: 14px 14px; border-radius: 12px; }
 
-/* ── MODALS ──────────────────────────────────────────────────── */
+/* ── MODALS (bottom sheet) ─────────────────────────────────── */
 .modal-backdrop {
   display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,0.7); z-index: 200;
+  background: rgba(0,0,0,.72); z-index: 200;
   align-items: flex-end; justify-content: center;
 }
 .modal-backdrop.open { display: flex; }
 .modal {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 20px 20px 0 0;
-  padding: 20px; padding-bottom: calc(20px + var(--safe-bottom));
-  width: 100%; max-width: 500px;
-  display: flex; flex-direction: column; gap: 16px;
-  max-height: 85vh; overflow-y: auto;
-  animation: slideUp 0.25s ease;
+  padding: 18px 18px; padding-bottom: calc(18px + var(--sb));
+  width: 100%; max-width: 520px;
+  display: flex; flex-direction: column; gap: 14px;
+  max-height: 88vh; overflow-y: auto;
+  animation: slideUp .22s ease;
 }
 @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
-.modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto -4px; flex-shrink: 0; }
-.modal h2 { font-size: 1.05rem; font-weight: 800; }
-.modal-body { display: flex; flex-direction: column; gap: 10px; }
-.modal-footer { display: flex; gap: 10px; }
+.modal-handle { width: 34px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto -4px; flex-shrink: 0; }
+.modal h2 { font-size: 1rem; font-weight: 800; }
+.modal-body { display: flex; flex-direction: column; gap: 9px; }
+.modal-footer { display: flex; gap: 8px; }
 .modal-footer button { flex: 1; }
 
-.manage-list { display: flex; flex-direction: column; gap: 8px; }
-.manage-item { display: flex; align-items: center; justify-content: space-between; background: var(--surface2); border-radius: 10px; padding: 12px 14px; gap: 10px; }
-.manage-item-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
-.manage-item-name { font-size: 0.88rem; font-weight: 600; }
-.manage-item-sub { font-size: 0.74rem; color: var(--muted); }
-
-.home-star { font-size: 1.1rem; cursor: pointer; opacity: 0.35; transition: opacity 0.15s, transform 0.15s; }
+.manage-list { display: flex; flex-direction: column; gap: 7px; }
+.manage-item { display: flex; align-items: center; justify-content: space-between; background: var(--surface2); border-radius: 10px; padding: 11px 13px; gap: 10px; }
+.manage-item-info { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 0; }
+.manage-item-name { font-size: 0.86rem; font-weight: 700; }
+.manage-item-sub { font-size: 0.72rem; color: var(--muted); margin-top: 1px; }
+.home-star { font-size: 1.1rem; cursor: pointer; opacity: .3; transition: opacity .15s, transform .15s; }
 .home-star.active { opacity: 1; }
 .home-star:active { transform: scale(1.3); }
-
-textarea {
-  background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
-  color: var(--text); padding: 12px 14px; font-size: 0.88rem; font-family: inherit;
-  width: 100%; min-height: 100px; resize: none;
-}
+textarea { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); padding: 12px 13px; font-size: 0.86rem; font-family: inherit; width: 100%; min-height: 90px; resize: none; }
 textarea:focus { outline: none; border-color: var(--accent); }
+.no-items { color: var(--muted); font-size: 0.82rem; text-align: center; padding: 14px; }
 
-.no-items { color: var(--muted); font-size: 0.84rem; text-align: center; padding: 14px; }
-#empty-msg { color: var(--muted); text-align: center; padding: 40px 0; font-size: 0.9rem; line-height: 1.8; }
+/* ── MOBILE PERSON DETAIL SHEET ────────────────────────────── */
+#person-sheet {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.72); z-index: 250;
+  align-items: flex-end; justify-content: center;
+}
+#person-sheet.open { display: flex; }
+.person-sheet-inner {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px 20px 0 0;
+  padding: 18px; padding-bottom: calc(18px + var(--sb));
+  width: 100%; max-width: 400px;
+  display: flex; flex-direction: column; gap: 14px;
+  animation: slideUp .22s ease;
+}
+.ps-header { display: flex; align-items: center; gap: 12px; }
+.ps-avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 900; color: #fff; flex-shrink: 0; }
+.ps-name { font-size: 1rem; font-weight: 800; }
+.ps-loc { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+.ps-history-title { font-size: 0.65rem; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: .4px; }
+.ps-rows { display: flex; flex-direction: column; gap: 0; }
+.ps-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.82rem; }
+.ps-row:last-child { border: none; }
+.ps-row-loc { font-weight: 500; }
+.ps-row-time { color: var(--muted); font-size: 0.76rem; }
+.ps-empty { color: var(--muted); font-size: 0.82rem; }
+.ps-close { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; font-size: 0.88rem; font-weight: 700; width: 100%; cursor: pointer; color: var(--text); }
+.ps-close:active { background: var(--surface3); }
 
-/* ── TOAST ───────────────────────────────────────────────────── */
-#toast-container { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 500; pointer-events: none; width: 90%; max-width: 320px; }
-.toast { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent2); border-radius: 12px; padding: 11px 16px; font-size: 0.84rem; box-shadow: 0 8px 24px rgba(0,0,0,0.4); animation: toastIn 0.25s ease; text-align: center; width: 100%; }
-@keyframes toastIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
-.toast.fade-out { animation: toastOut 0.25s ease forwards; }
-@keyframes toastOut { to { opacity: 0; transform: translateY(-6px); } }
+/* ── TOAST ─────────────────────────────────────────────────── */
+#toast-container { position: fixed; top: 68px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 7px; z-index: 500; pointer-events: none; width: 92%; max-width: 320px; }
+.toast { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent2); border-radius: 12px; padding: 10px 15px; font-size: 0.83rem; box-shadow: 0 8px 24px rgba(0,0,0,.5); animation: toastIn .22s ease; text-align: center; width: 100%; }
+@keyframes toastIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+.toast.fade-out { animation: toastOut .22s ease forwards; }
+@keyframes toastOut { to { opacity:0; transform:translateY(-6px); } }
 
-.section-divider { height: 1px; background: var(--border); margin: 2px 0; }
+#empty-msg { color: var(--muted); text-align: center; padding: 40px 0 20px; font-size: 0.88rem; line-height: 1.8; grid-column: 1/-1; }
+.divider { height: 1px; background: var(--border); }
 </style>
 </head>
 <body>
 
-<!-- ══ NAME SCREEN ════════════════════════════════════════════ -->
+<!-- ══ NAME SCREEN ═══════════════════════════════════════════ -->
 <div id="name-screen">
   <div class="name-card">
     <div class="name-logo">📍</div>
-    <div class="name-title">Team Tracker</div>
-    <div class="name-sub">Enter your name to get started.</div>
+    <div class="name-title">Team <span>Tracker</span></div>
+    <div class="name-sub">Enter your name to check in with the team.</div>
     <div class="name-field">
       <label>Your name</label>
-      <input type="text" id="input-name" placeholder="e.g. Austin" autocomplete="name" autocorrect="off">
+      <input type="text" id="input-name" placeholder="e.g. Austin" autocomplete="name" autocorrect="off" autocapitalize="words">
     </div>
     <button class="btn-primary btn-full" onclick="submitName()">Let's Go →</button>
   </div>
 </div>
 
-<!-- ══ APP ════════════════════════════════════════════════════ -->
+<!-- ══ APP ═══════════════════════════════════════════════════ -->
 <header>
-  <h1>Team <span>Tracker</span></h1>
+  <div class="logo">
+    <span class="logo-icon">📍</span>
+    <h1>Team <span>Tracker</span></h1>
+  </div>
   <div class="header-right">
-    <div class="sync-dot" id="sync-dot"></div>
+    <div class="sync-pill">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-label">–</span>
+    </div>
     <div class="user-pill" onclick="openModal('modal-account')">
       <div class="u-dot" id="user-avatar"></div>
       <span id="user-name-label"></span>
@@ -270,41 +397,86 @@ textarea:focus { outline: none; border-color: var(--accent); }
   </div>
 </header>
 
-<main>
-  <!-- Announcement -->
-  <div id="announcement-bar">
-    <div class="ann-icon">📢</div>
-    <div class="ann-body">
-      <div class="ann-label">Announcement</div>
-      <div class="ann-msg" id="ann-text"></div>
+<div class="page-wrap">
+
+  <!-- ── BOARD COLUMN ──────────────────────────────────────── -->
+  <div class="board-col">
+
+    <!-- Announcement -->
+    <div id="announcement-bar">
+      <div class="ann-icon">📢</div>
+      <div class="ann-body">
+        <div class="ann-label">Announcement</div>
+        <div class="ann-msg" id="ann-text"></div>
+      </div>
+      <button class="ann-dismiss" onclick="dismissAnnouncement()">Got it</button>
     </div>
-    <button class="ann-dismiss" onclick="dismissAnnouncement()">Got it</button>
+
+    <!-- Location grid -->
+    <div id="board">
+      <div id="empty-msg" style="display:none;">
+        No locations yet.<br>
+        <span style="color:var(--accent);font-size:0.8rem;">Use ⚙️ Manage to add locations and people.</span>
+      </div>
+    </div>
+
   </div>
 
-  <!-- Board -->
-  <div id="board"></div>
-  <div id="empty-msg" style="display:none;">
-    No locations yet.<br>
-    <span style="color:var(--accent);font-size:0.82rem;">Tap ⚙️ Manage below to add some.</span>
-  </div>
-</main>
+  <!-- ── SIDEBAR (desktop) ─────────────────────────────────── -->
+  <div class="sidebar-col">
 
-<!-- ══ BOTTOM BAR ════════════════════════════════════════════ -->
-<div id="bottom-bar">
-  <div class="checkin-selects">
-    <select id="sel-employee"><option value="">Who are you?</option></select>
-    <select id="sel-location"><option value="">Where?</option></select>
-  </div>
-  <div class="bottom-actions">
-    <button class="btn-primary" onclick="updateEmployeeLocation()">✓ Check In</button>
-    <button class="btn-ghost" onclick="openModal('modal-manage')">⚙️ Manage</button>
+    <!-- Check-in panel -->
+    <div class="checkin-panel">
+      <div class="panel-title">✓ Check In</div>
+      <select id="sel-employee-d"><option value="">Who are you?</option></select>
+      <select id="sel-location-d"><option value="">Where are you?</option></select>
+      <button class="btn-primary btn-full" onclick="updateEmployeeLocation('d')">Check In</button>
+    </div>
+
+    <!-- Manage panel -->
+    <div class="manage-panel">
+      <div class="panel-title">Manage</div>
+      <button class="manage-btn" onclick="openModal('modal-employees')"><span class="mb-icon">👥</span> Employees</button>
+      <button class="manage-btn" onclick="openModal('modal-locations')"><span class="mb-icon">📍</span> Locations</button>
+      <button class="manage-btn" onclick="openModal('modal-announce')"><span class="mb-icon">📢</span> Announcement</button>
+      <div class="divider"></div>
+      <button class="manage-btn warn" onclick="openModal('modal-moveall')"><span class="mb-icon">🚀</span> Move Everyone</button>
+      <button class="manage-btn danger" onclick="confirmClearAll()"><span class="mb-icon">🗑</span> Clear All Check-Ins</button>
+    </div>
+
   </div>
 </div>
 
-<!-- Toast -->
+<!-- ── BOTTOM BAR (mobile) ───────────────────────────────────── -->
+<div id="bottom-bar">
+  <select id="sel-employee-m"><option value="">Who are you?</option></select>
+  <select id="sel-location-m"><option value="">Where?</option></select>
+  <button class="btn-primary checkin-btn" onclick="updateEmployeeLocation('m')">✓</button>
+</div>
+
+<!-- Mobile: open manage via long-press on ✓ or dedicated button -->
+<!-- We add a small Manage button inside the bottom bar -->
 <div id="toast-container"></div>
 
-<!-- ══ MODAL: Manage ═════════════════════════════════════════ -->
+<!-- ══ PERSON DETAIL SHEET (mobile tap) ══════════════════════ -->
+<div id="person-sheet">
+  <div class="person-sheet-inner">
+    <div class="ps-header">
+      <div class="ps-avatar" id="ps-avatar"></div>
+      <div>
+        <div class="ps-name" id="ps-name"></div>
+        <div class="ps-loc" id="ps-loc"></div>
+      </div>
+    </div>
+    <div class="ps-history-title">Recent Locations</div>
+    <div class="ps-rows" id="ps-rows"></div>
+    <button class="ps-close" onclick="closePersonSheet()">Close</button>
+  </div>
+</div>
+
+<!-- ══ MODALS ════════════════════════════════════════════════ -->
+
+<!-- Manage (mobile) — triggered by holding the bottom bar or a manage button -->
 <div class="modal-backdrop" id="modal-manage">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -313,17 +485,14 @@ textarea:focus { outline: none; border-color: var(--accent); }
       <button class="btn-ghost btn-full" onclick="closeModal('modal-manage');openModal('modal-employees')">👥 Employees</button>
       <button class="btn-ghost btn-full" onclick="closeModal('modal-manage');openModal('modal-locations')">📍 Locations</button>
       <button class="btn-ghost btn-full" onclick="closeModal('modal-manage');openModal('modal-announce')">📢 Announcement</button>
-      <div class="section-divider"></div>
+      <div class="divider"></div>
       <button class="btn-warning btn-full" onclick="closeModal('modal-manage');openModal('modal-moveall')">🚀 Move Everyone</button>
       <button class="btn-danger btn-full" onclick="closeModal('modal-manage');confirmClearAll()">🗑 Clear All Check-Ins</button>
     </div>
-    <div class="modal-footer">
-      <button class="btn-ghost" onclick="closeModal('modal-manage')">Close</button>
-    </div>
+    <div class="modal-footer"><button class="btn-ghost" onclick="closeModal('modal-manage')">Close</button></div>
   </div>
 </div>
 
-<!-- ══ MODAL: Employees ══════════════════════════════════════ -->
 <div class="modal-backdrop" id="modal-employees">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -335,13 +504,10 @@ textarea:focus { outline: none; border-color: var(--accent); }
       </div>
       <div class="manage-list" id="employee-manage-list"></div>
     </div>
-    <div class="modal-footer">
-      <button class="btn-ghost" onclick="closeModal('modal-employees')">Done</button>
-    </div>
+    <div class="modal-footer"><button class="btn-ghost" onclick="closeModal('modal-employees')">Done</button></div>
   </div>
 </div>
 
-<!-- ══ MODAL: Locations ══════════════════════════════════════ -->
 <div class="modal-backdrop" id="modal-locations">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -351,49 +517,40 @@ textarea:focus { outline: none; border-color: var(--accent); }
         <input type="text" id="new-location-name" placeholder="Location name" style="flex:1;" onkeydown="if(event.key==='Enter')addLocation()">
         <button class="btn-primary btn-sm" onclick="addLocation()">Add</button>
       </div>
-      <p style="font-size:0.75rem;color:var(--muted);">⭐ Tap the star to set as Home.</p>
+      <p style="font-size:0.72rem;color:var(--muted);">⭐ Tap the star to set as Home base.</p>
       <div class="manage-list" id="location-manage-list"></div>
     </div>
-    <div class="modal-footer">
-      <button class="btn-ghost" onclick="closeModal('modal-locations')">Done</button>
-    </div>
+    <div class="modal-footer"><button class="btn-ghost" onclick="closeModal('modal-locations')">Done</button></div>
   </div>
 </div>
 
-<!-- ══ MODAL: Announcement ══════════════════════════════════ -->
 <div class="modal-backdrop" id="modal-announce">
   <div class="modal">
     <div class="modal-handle"></div>
     <h2>📢 Announcement</h2>
     <div class="modal-body">
-      <p style="font-size:0.82rem;color:var(--muted);line-height:1.5;">Appears as a banner on every device until each person taps "Got it".</p>
+      <p style="font-size:0.8rem;color:var(--muted);line-height:1.5;">Appears as a persistent banner on every device until each person taps "Got it".</p>
       <textarea id="announce-text" placeholder="Type your message…"></textarea>
       <button class="btn-primary btn-full" onclick="sendAnnouncement()">📢 Publish</button>
       <button class="btn-ghost btn-full btn-sm" onclick="clearAnnouncement()">Clear current announcement</button>
     </div>
-    <div class="modal-footer">
-      <button class="btn-ghost" onclick="closeModal('modal-announce')">Cancel</button>
-    </div>
+    <div class="modal-footer"><button class="btn-ghost" onclick="closeModal('modal-announce')">Cancel</button></div>
   </div>
 </div>
 
-<!-- ══ MODAL: Move All ═══════════════════════════════════════ -->
 <div class="modal-backdrop" id="modal-moveall">
   <div class="modal">
     <div class="modal-handle"></div>
     <h2>🚀 Move Everyone</h2>
     <div class="modal-body">
-      <p style="font-size:0.82rem;color:var(--muted);line-height:1.5;">Move the entire team to one location at once.</p>
+      <p style="font-size:0.8rem;color:var(--muted);line-height:1.5;">Move the entire team to one location instantly.</p>
       <select id="sel-moveall"><option value="">— Pick a location —</option></select>
       <button class="btn-warning btn-full" onclick="moveAll()">🚀 Move Everyone</button>
     </div>
-    <div class="modal-footer">
-      <button class="btn-ghost" onclick="closeModal('modal-moveall')">Cancel</button>
-    </div>
+    <div class="modal-footer"><button class="btn-ghost" onclick="closeModal('modal-moveall')">Cancel</button></div>
   </div>
 </div>
 
-<!-- ══ MODAL: Account ════════════════════════════════════════ -->
 <div class="modal-backdrop" id="modal-account">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -401,7 +558,7 @@ textarea:focus { outline: none; border-color: var(--accent); }
     <div class="modal-body">
       <div class="manage-item">
         <div class="manage-item-info">
-          <div class="avatar" id="account-avatar" style="width:36px;height:36px;"></div>
+          <div class="person-avatar" id="account-avatar" style="width:38px;height:38px;font-size:0.82rem;"></div>
           <div>
             <div class="manage-item-name" id="account-name-label"></div>
             <div class="manage-item-sub">Signed in on this device</div>
@@ -428,6 +585,7 @@ const DB = {
 
 function setSyncStatus(s) {
   document.getElementById('sync-dot').className = 'sync-dot ' + s;
+  document.getElementById('sync-label').textContent = {connected:'Live', syncing:'Saving…', error:'Offline', '':'…'}[s] || '–';
 }
 
 async function fbGet(url) {
@@ -435,7 +593,6 @@ async function fbGet(url) {
   if (!r.ok) throw new Error('GET ' + r.status);
   return r.json();
 }
-
 async function fbPut(url, data) {
   setSyncStatus('syncing');
   const r = await fetch(url, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
@@ -444,26 +601,21 @@ async function fbPut(url, data) {
 }
 
 // ════════════════════════════════════════════════════════════
-//  SESSION — just a name, stored in localStorage
+//  SESSION
 // ════════════════════════════════════════════════════════════
 const NAME_KEY = 'tt_name';
 let currentName = null;
 
 function loadName() { return localStorage.getItem(NAME_KEY) || null; }
-function saveName(name) { localStorage.setItem(NAME_KEY, name); }
+function saveName(n) { localStorage.setItem(NAME_KEY, n); }
 function signOut() { localStorage.removeItem(NAME_KEY); location.reload(); }
 
 function submitName() {
   const name = document.getElementById('input-name').value.trim();
   if (!name) { document.getElementById('input-name').focus(); return; }
-  saveName(name);
-  currentName = name;
-  showApp(name);
+  saveName(name); currentName = name; showApp(name);
 }
-
-document.getElementById('input-name').addEventListener('keydown', e => {
-  if (e.key === 'Enter') submitName();
-});
+document.getElementById('input-name').addEventListener('keydown', e => { if(e.key==='Enter') submitName(); });
 
 function showApp(name) {
   document.getElementById('name-screen').style.display = 'none';
@@ -473,12 +625,12 @@ function showApp(name) {
 
 function updateUserUI(name) {
   const ini = name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
-  const color = colorFor(name);
+  const col = colorFor(name);
   document.getElementById('user-avatar').textContent = ini;
-  document.getElementById('user-avatar').style.background = color;
+  document.getElementById('user-avatar').style.background = col;
   document.getElementById('user-name-label').textContent = name;
   document.getElementById('account-avatar').textContent = ini;
-  document.getElementById('account-avatar').style.background = color;
+  document.getElementById('account-avatar').style.background = col;
   document.getElementById('account-name-label').textContent = name;
 }
 
@@ -495,77 +647,71 @@ let announcement = null;
 async function loadAll() {
   try {
     setSyncStatus('');
-    const [s, h, a] = await Promise.all([
-      fbGet(DB.state), fbGet(DB.empHistory), fbGet(DB.announcement)
-    ]);
+    const [s, h, a] = await Promise.all([fbGet(DB.state), fbGet(DB.empHistory), fbGet(DB.announcement)]);
     if (s) state = { employees: s.employees||[], locations: s.locations||[] };
-    if (h && typeof h === 'object' && !Array.isArray(h)) empHistory = h;
+    if (h && typeof h==='object' && !Array.isArray(h)) empHistory = h;
     if (a && a.msg) announcement = a;
     setSyncStatus('connected');
   } catch(e) {
     setSyncStatus('error');
-    try { const r = localStorage.getItem('tt_state'); if(r) state = JSON.parse(r); } catch(e2){}
+    try { const r=localStorage.getItem('tt_state'); if(r) state=JSON.parse(r); } catch(e2){}
   }
 }
 
-let _skipState = false, _skipHistory = false, _skipAnn = false;
+let _skipState=false, _skipHistory=false, _skipAnn=false;
 
 async function saveState() {
-  _skipState = true;
+  _skipState=true;
   try { await fbPut(DB.state, state); localStorage.setItem('tt_state', JSON.stringify(state)); }
   catch(e) { setSyncStatus('error'); }
 }
 async function saveHistory() {
-  _skipHistory = true;
+  _skipHistory=true;
   try { await fbPut(DB.empHistory, empHistory); } catch(e){}
 }
 async function saveAnnouncement() {
-  _skipAnn = true;
-  try { await fbPut(DB.announcement, announcement || null); } catch(e){}
+  _skipAnn=true;
+  try { await fbPut(DB.announcement, announcement||null); } catch(e){}
 }
 
 // ════════════════════════════════════════════════════════════
 //  STREAMING
 // ════════════════════════════════════════════════════════════
 function startStreaming() {
-  const ss = new EventSource(FIREBASE_URL + '/state.json?accept=text/event-stream');
+  const ss = new EventSource(FIREBASE_URL+'/state.json?accept=text/event-stream');
   ss.addEventListener('put', e => {
-    if (_skipState) { _skipState = false; return; }
-    try {
-      const d = JSON.parse(e.data).data;
-      if (d) { state = { employees: d.employees||[], locations: d.locations||[] }; render(); }
-      setSyncStatus('connected');
-    } catch(err){}
+    if (_skipState) { _skipState=false; return; }
+    try { const d=JSON.parse(e.data).data; if(d){state={employees:d.employees||[],locations:d.locations||[]};render();} setSyncStatus('connected'); } catch(err){}
   });
   ss.onerror = () => setSyncStatus('error');
 
-  const hs = new EventSource(FIREBASE_URL + '/empHistory.json?accept=text/event-stream');
+  const hs = new EventSource(FIREBASE_URL+'/empHistory.json?accept=text/event-stream');
   hs.addEventListener('put', e => {
-    if (_skipHistory) { _skipHistory = false; return; }
-    try { const d = JSON.parse(e.data).data; if (d && typeof d==='object') { empHistory=d; renderBoard(); } } catch(err){}
+    if (_skipHistory) { _skipHistory=false; return; }
+    try { const d=JSON.parse(e.data).data; if(d&&typeof d==='object'){empHistory=d;renderBoard();} } catch(err){}
   });
 
-  const as = new EventSource(FIREBASE_URL + '/announcement.json?accept=text/event-stream');
+  const as = new EventSource(FIREBASE_URL+'/announcement.json?accept=text/event-stream');
   as.addEventListener('put', e => {
-    if (_skipAnn) { _skipAnn = false; return; }
-    try { const d = JSON.parse(e.data).data; announcement = (d&&d.msg)?d:null; renderAnnouncement(); } catch(err){}
+    if (_skipAnn) { _skipAnn=false; return; }
+    try { const d=JSON.parse(e.data).data; announcement=(d&&d.msg)?d:null; renderAnnouncement(); } catch(err){}
   });
 }
 
 // ════════════════════════════════════════════════════════════
 //  UTILS
 // ════════════════════════════════════════════════════════════
-const COLORS = ['#4f6ef7','#6ee7b7','#f59e0b','#ec4899','#8b5cf6','#10b981','#f97316','#06b6d4','#ef4444','#84cc16'];
+const COLORS=['#4f6ef7','#6ee7b7','#f59e0b','#ec4899','#8b5cf6','#10b981','#f97316','#06b6d4','#ef4444','#84cc16'];
 function uid() { return Math.random().toString(36).slice(2,9); }
-function initials(name) { return name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
+function initials(n) { return n.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
 function colorFor(id) { return COLORS[[...id].reduce((a,c)=>a+c.charCodeAt(0),0)%COLORS.length]; }
 function esc(s) { return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function relTime(ts) {
-  const m = Math.floor((Date.now()-ts)/60000);
-  if (m<1) return 'just now';
-  if (m<60) return m+'m ago';
-  const h = Math.floor(m/60);
-  if (h<24) return h+'h ago';
+  const m=Math.floor((Date.now()-ts)/60000);
+  if(m<1) return 'just now';
+  if(m<60) return m+'m ago';
+  const h=Math.floor(m/60);
+  if(h<24) return h+'h ago';
   return Math.floor(h/24)+'d ago';
 }
 
@@ -576,71 +722,88 @@ let _ac;
 function getAC() { if(!_ac) _ac=new(window.AudioContext||window.webkitAudioContext)(); return _ac; }
 function beep(f1,f2,type='sine') {
   try {
-    const a=getAC(), t=a.currentTime;
-    [[f1,0],[f2,0.16]].filter(([f])=>f).forEach(([f,d])=>{
+    const a=getAC(),t=a.currentTime;
+    [[f1,0],[f2,.16]].filter(([f])=>f).forEach(([f,d])=>{
       const o=a.createOscillator(),g=a.createGain();
-      o.type=type; o.frequency.value=f;
-      g.gain.setValueAtTime(0,t+d);
-      g.gain.linearRampToValueAtTime(0.18,t+d+0.02);
-      g.gain.exponentialRampToValueAtTime(0.001,t+d+0.45);
-      o.connect(g); g.connect(a.destination); o.start(t+d); o.stop(t+d+0.5);
+      o.type=type;o.frequency.value=f;
+      g.gain.setValueAtTime(0,t+d);g.gain.linearRampToValueAtTime(.16,t+d+.02);g.gain.exponentialRampToValueAtTime(.001,t+d+.45);
+      o.connect(g);g.connect(a.destination);o.start(t+d);o.stop(t+d+.5);
     });
   } catch(e){}
 }
-function playCheckin() { beep(523,659); }
-function playAdd()     { beep(440,880,'triangle'); }
-function playRemove()  { beep(440,220,'triangle'); }
+function playCheckin(){beep(523,659);}
+function playAdd(){beep(440,880,'triangle');}
+function playRemove(){beep(440,220,'triangle');}
 
 // ════════════════════════════════════════════════════════════
 //  RENDER
 // ════════════════════════════════════════════════════════════
-function render() { renderBoard(); renderSelects(); renderEmployeeList(); renderLocationList(); renderMoveAll(); }
+function render() { renderBoard(); renderAllSelects(); renderEmployeeList(); renderLocationList(); renderMoveAll(); }
 
 function renderBoard() {
-  const board = document.getElementById('board');
-  const empty = document.getElementById('empty-msg');
+  const board=document.getElementById('board');
+  const empty=document.getElementById('empty-msg');
   if (!state.locations.length) { board.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display='none';
 
   board.innerHTML = state.locations.map(loc => {
     const here = state.employees.filter(e=>e.locationId===loc.id);
-    const chips = here.length
+    const hasPeople = here.length > 0;
+
+    const bubbles = hasPeople
       ? here.map(e => {
-          const hist = (empHistory[e.id]||[]).slice(0,5);
-          const rows = hist.length
+          const hist=(empHistory[e.id]||[]).slice(0,5);
+          const rows=hist.length
             ? hist.map(h=>`<div class="tip-row"><span class="tip-loc">📍 ${esc(h.locName)}</span><span class="tip-time">${relTime(h.ts)}</span></div>`).join('')
             : `<div class="tip-empty">No history yet</div>`;
-          return `<div class="employee-chip ${loc.isHome?'home-chip':''}">
-            <div class="avatar" style="background:${colorFor(e.id)}">${initials(e.name)}</div>
-            <span class="chip-name">${esc(e.name)}</span>
-            <div class="chip-dot ${loc.isHome?'home-dot':''}"></div>
-            <div class="chip-tooltip"><div class="tip-title">Recent Locations</div>${rows}</div>
+          return `<div class="person-bubble" onclick="openPersonSheet('${e.id}')" tabindex="0">
+            <div class="person-avatar" style="background:${colorFor(e.id)}">${initials(e.name)}</div>
+            <div class="person-name">${esc(e.name)}</div>
+            <div class="person-tooltip">
+              <div class="tip-name">${esc(e.name)}</div>
+              <div class="tip-title">Recent locations</div>
+              ${rows}
+            </div>
           </div>`;
         }).join('')
-      : `<div class="empty-loc">Nobody here</div>`;
+      : `<div class="empty-loc">empty</div>`;
 
     return `<div class="location-card ${loc.isHome?'is-home':''}">
       <div class="loc-header">
-        <div class="loc-name">${loc.isHome?'🏠':'📍'} ${esc(loc.name)}${loc.isHome?' <span class="home-badge">Home</span>':''}</div>
-        <span class="loc-count">${here.length}/${state.employees.length}</span>
+        <div class="loc-title">
+          <div class="loc-icon-name">${loc.isHome?'🏠':'📍'} ${esc(loc.name)}</div>
+          ${loc.isHome?'<span class="home-badge">Home</span>':''}
+        </div>
+        <span class="loc-count-pill ${hasPeople?'has-people':''}">${here.length}/${state.employees.length}</span>
       </div>
-      <div class="employee-list">${chips}</div>
+      <div class="avatar-cluster">${bubbles}</div>
     </div>`;
   }).join('');
 }
 
-function renderSelects() {
-  const es=document.getElementById('sel-employee'), ls=document.getElementById('sel-location');
-  const pe=es.value, pl=ls.value;
-  es.innerHTML='<option value="">Who are you?</option>'+state.employees.map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('');
-  ls.innerHTML='<option value="">Where?</option>'+state.locations.map(l=>`<option value="${l.id}">${esc(l.name)}${l.isHome?' 🏠':''}</option>`).join('');
-  if(pe) es.value=pe; if(pl) ls.value=pl;
+function renderAllSelects() {
+  // Mobile
+  syncSelect('sel-employee-m', state.employees, e=>`<option value="${e.id}">${esc(e.name)}</option>`, 'Who are you?');
+  syncSelect('sel-location-m',  state.locations,  l=>`<option value="${l.id}">${esc(l.name)}${l.isHome?' 🏠':''}</option>`, 'Where?');
+  // Desktop
+  syncSelect('sel-employee-d', state.employees, e=>`<option value="${e.id}">${esc(e.name)}</option>`, 'Who are you?');
+  syncSelect('sel-location-d',  state.locations,  l=>`<option value="${l.id}">${esc(l.name)}${l.isHome?' 🏠':''}</option>`, 'Where are you?');
 
-  // Pre-select current user if they exist as an employee
-  if (!pe && currentName) {
-    const match = state.employees.find(e=>e.name.toLowerCase()===currentName.toLowerCase());
-    if (match) es.value = match.id;
-  }
+  // Auto-select current user
+  ['sel-employee-m','sel-employee-d'].forEach(id => {
+    const el=document.getElementById(id);
+    if (!el.value && currentName) {
+      const m=state.employees.find(e=>e.name.toLowerCase()===currentName.toLowerCase());
+      if(m) el.value=m.id;
+    }
+  });
+}
+
+function syncSelect(id, items, optFn, placeholder) {
+  const el=document.getElementById(id);
+  const prev=el.value;
+  el.innerHTML=`<option value="">${placeholder}</option>`+items.map(optFn).join('');
+  if(prev) el.value=prev;
 }
 
 function renderEmployeeList() {
@@ -650,7 +813,7 @@ function renderEmployeeList() {
     const loc=state.locations.find(l=>l.id===e.locationId);
     return `<div class="manage-item">
       <div class="manage-item-info">
-        <div class="avatar" style="background:${colorFor(e.id)};width:30px;height:30px;font-size:0.72rem">${initials(e.name)}</div>
+        <div class="person-avatar" style="background:${colorFor(e.id)};width:30px;height:30px;font-size:0.68rem">${initials(e.name)}</div>
         <div><div class="manage-item-name">${esc(e.name)}</div><div class="manage-item-sub">${loc?esc(loc.name):'Not checked in'}</div></div>
       </div>
       <button class="btn-danger btn-sm" onclick="removeEmployee('${e.id}')">Remove</button>
@@ -675,7 +838,7 @@ function renderLocationList() {
 }
 
 function renderMoveAll() {
-  const sel=document.getElementById('sel-moveall'), prev=sel.value;
+  const sel=document.getElementById('sel-moveall'),prev=sel.value;
   sel.innerHTML='<option value="">— Pick a location —</option>'+state.locations.map(l=>`<option value="${l.id}">${esc(l.name)}${l.isHome?' 🏠':''}</option>`).join('');
   if(prev) sel.value=prev;
 }
@@ -683,11 +846,38 @@ function renderMoveAll() {
 function renderAnnouncement() {
   const bar=document.getElementById('announcement-bar');
   if(!announcement||!announcement.msg){bar.classList.remove('visible');return;}
-  const key='ann_'+( announcement.id||'');
+  const key='ann_'+(announcement.id||'');
   if(localStorage.getItem(key)){bar.classList.remove('visible');return;}
   document.getElementById('ann-text').textContent=announcement.msg;
   bar.classList.add('visible');
 }
+
+// ════════════════════════════════════════════════════════════
+//  PERSON DETAIL SHEET (mobile tap)
+// ════════════════════════════════════════════════════════════
+function openPersonSheet(empId) {
+  const e=state.employees.find(x=>x.id===empId); if(!e) return;
+  const loc=state.locations.find(l=>l.id===e.locationId);
+  const hist=(empHistory[empId]||[]).slice(0,5);
+
+  document.getElementById('ps-avatar').textContent=initials(e.name);
+  document.getElementById('ps-avatar').style.background=colorFor(e.id);
+  document.getElementById('ps-name').textContent=e.name;
+  document.getElementById('ps-loc').textContent=loc?'Currently at '+loc.name:'Not checked in';
+
+  document.getElementById('ps-rows').innerHTML = hist.length
+    ? hist.map(h=>`<div class="ps-row"><span class="ps-row-loc">📍 ${esc(h.locName)}</span><span class="ps-row-time">${relTime(h.ts)}</span></div>`).join('')
+    : '<div class="ps-empty">No history yet</div>';
+
+  document.getElementById('person-sheet').classList.add('open');
+}
+
+function closePersonSheet() {
+  document.getElementById('person-sheet').classList.remove('open');
+}
+document.getElementById('person-sheet').addEventListener('click', e => {
+  if(e.target===document.getElementById('person-sheet')) closePersonSheet();
+});
 
 // ════════════════════════════════════════════════════════════
 //  ACTIONS
@@ -714,7 +904,7 @@ async function addLocation() {
   if(state.locations.some(l=>l.name.toLowerCase()===name.toLowerCase())){toast('Already exists.');return;}
   const isFirst=state.locations.length===0;
   state.locations.push({id:uid(),name,isHome:isFirst});
-  await saveState(); render(); inp.value=''; playAdd(); toast(name+' added!'+(isFirst?' Set as Home 🏠':''));
+  await saveState(); render(); inp.value=''; playAdd(); toast(name+' added!'+(isFirst?' (set as Home 🏠)':''));
 }
 
 async function removeLocation(id) {
@@ -732,9 +922,10 @@ async function setHome(id) {
   if(loc) toast(loc.name+' is now Home 🏠');
 }
 
-async function updateEmployeeLocation() {
-  const empId=document.getElementById('sel-employee').value;
-  const locId=document.getElementById('sel-location').value;
+// suffix: 'm' = mobile selects, 'd' = desktop selects
+async function updateEmployeeLocation(suffix) {
+  const empId=document.getElementById('sel-employee-'+suffix).value;
+  const locId=document.getElementById('sel-location-'+suffix).value;
   if(!empId||!locId){toast('Pick a name and a location.');return;}
   const emp=state.employees.find(e=>e.id===empId);
   const loc=state.locations.find(l=>l.id===locId);
@@ -745,14 +936,13 @@ async function updateEmployeeLocation() {
   empHistory[empId].unshift({locName:loc.name,ts:Date.now()});
   empHistory[empId]=empHistory[empId].slice(0,5);
   await saveState(); await saveHistory(); render();
-  playCheckin(); toast(emp.name+' checked in at '+loc.name+(loc.isHome?' 🏠':'')+'!');
+  playCheckin(); toast(emp.name+' → '+loc.name+(loc.isHome?' 🏠':'')+'!');
 }
 
 async function moveAll() {
   const locId=document.getElementById('sel-moveall').value;
   if(!locId){toast('Pick a location.');return;}
-  const loc=state.locations.find(l=>l.id===locId);
-  if(!loc) return;
+  const loc=state.locations.find(l=>l.id===locId); if(!loc) return;
   const ts=Date.now();
   state.employees.forEach(e=>{
     e.locationId=locId;
@@ -766,7 +956,7 @@ async function moveAll() {
 }
 
 async function confirmClearAll() {
-  if(!confirm('Clear all check-ins? Everyone will be marked as not checked in.')) return;
+  if(!confirm('Clear all check-ins?')) return;
   state.employees.forEach(e=>e.locationId=null);
   await saveState(); render(); toast('All check-ins cleared.');
 }
@@ -794,6 +984,17 @@ function dismissAnnouncement() {
 }
 
 // ════════════════════════════════════════════════════════════
+//  MOBILE MANAGE: long-press the ✓ button
+// ════════════════════════════════════════════════════════════
+(function() {
+  const btn = document.querySelector('#bottom-bar .checkin-btn');
+  let timer;
+  btn.addEventListener('touchstart', () => { timer=setTimeout(()=>openModal('modal-manage'), 600); }, {passive:true});
+  btn.addEventListener('touchend',   () => clearTimeout(timer));
+  btn.addEventListener('touchmove',  () => clearTimeout(timer));
+})();
+
+// ════════════════════════════════════════════════════════════
 //  MODALS
 // ════════════════════════════════════════════════════════════
 function openModal(id) { document.getElementById(id).classList.add('open'); render(); }
@@ -805,11 +1006,11 @@ document.querySelectorAll('.modal-backdrop').forEach(el=>{
 // ════════════════════════════════════════════════════════════
 //  TOAST
 // ════════════════════════════════════════════════════════════
-function toast(msg,dur=2800) {
+function toast(msg,dur=2600) {
   const c=document.getElementById('toast-container');
   const el=document.createElement('div');
-  el.className='toast'; el.textContent=msg; c.appendChild(el);
-  setTimeout(()=>{el.classList.add('fade-out');setTimeout(()=>el.remove(),300);},dur);
+  el.className='toast';el.textContent=msg;c.appendChild(el);
+  setTimeout(()=>{el.classList.add('fade-out');setTimeout(()=>el.remove(),250);},dur);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -822,10 +1023,9 @@ async function initApp() {
   startStreaming();
 }
 
-// Check for saved name on load
 (function() {
-  const name = loadName();
-  if (name) { currentName=name; showApp(name); }
+  const name=loadName();
+  if(name){currentName=name;showApp(name);}
 })();
 </script>
 </body>
