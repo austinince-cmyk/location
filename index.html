@@ -662,15 +662,17 @@ async function saveAnnouncement() {
 //  STREAMING
 // ════════════════════════════════════════════════════════════
 function startStreaming() {
+  // State stream — skip first event (initial load), then apply remote changes only
   const ss = new EventSource(FIREBASE_URL+'/state.json?accept=text/event-stream');
-  let firstState = true;
+  let ssReady = false;
   ss.addEventListener('put', e => {
     try {
+      if (!ssReady) { ssReady=true; return; } // skip initial snapshot, already loaded
       const d=JSON.parse(e.data).data;
       if (!d) return;
-      // Always apply the initial load; after that, skip echoes of our own writes
-      if (firstState) { firstState=false; return; } // initial put already loaded via loadAll
-      if (Date.now() - _lastLocalWrite < 3000) return; // suppress own echo
+      const incoming = JSON.stringify({e:(d.employees||[]).map(x=>x.locationId+x.id).sort(), l:(d.locations||[]).map(x=>x.id).sort()});
+      const current  = JSON.stringify({e:(state.employees||[]).map(x=>x.locationId+x.id).sort(), l:(state.locations||[]).map(x=>x.id).sort()});
+      if (incoming === current) return; // no meaningful change, skip re-render
       state={employees:d.employees||[],locations:d.locations||[]};
       render();
       setSyncStatus('connected');
@@ -678,18 +680,19 @@ function startStreaming() {
   });
   ss.onerror = () => setSyncStatus('error');
 
+  // History stream
   const hs = new EventSource(FIREBASE_URL+'/empHistory.json?accept=text/event-stream');
-  let firstHist = true;
+  let hsReady = false;
   hs.addEventListener('put', e => {
     try {
+      if (!hsReady) { hsReady=true; return; }
       const d=JSON.parse(e.data).data;
       if (!d || typeof d!=='object') return;
-      if (firstHist) { firstHist=false; return; }
-      if (Date.now() - _lastLocalHistWrite < 3000) return;
       empHistory=d; renderBoard();
     } catch(err){}
   });
 
+  // Announcement stream
   const as = new EventSource(FIREBASE_URL+'/announcement.json?accept=text/event-stream');
   as.addEventListener('put', e => {
     try { const d=JSON.parse(e.data).data; announcement=(d&&d.msg)?d:null; renderAnnouncement(); } catch(err){}
@@ -745,7 +748,7 @@ function renderBoard() {
   empty.style.display='none';
 
   board.innerHTML = state.locations.map(loc => {
-    const here = state.employees.filter(e=>e.locationId===loc.id);
+    const here = state.employees.filter(e=>e.locationId===loc.id).sort((a,b)=>a.name.localeCompare(b.name));
     const hasPeople = here.length > 0;
 
     const bubbles = hasPeople
@@ -782,10 +785,11 @@ function renderBoard() {
 
 function renderAllSelects() {
   // Mobile
-  syncSelect('sel-employee-m', state.employees, e=>`<option value="${e.id}">${esc(e.name)}</option>`, 'Who are you?');
+  const sortedEmps = [...state.employees].sort((a,b)=>a.name.localeCompare(b.name));
+  syncSelect('sel-employee-m', sortedEmps, e=>`<option value="${e.id}">${esc(e.name)}</option>`, 'Who are you?');
   syncSelect('sel-location-m',  state.locations,  l=>`<option value="${l.id}">${esc(l.name)}${l.isHome?' 🏠':''}</option>`, 'Where?');
   // Desktop
-  syncSelect('sel-employee-d', state.employees, e=>`<option value="${e.id}">${esc(e.name)}</option>`, 'Who are you?');
+  syncSelect('sel-employee-d', sortedEmps, e=>`<option value="${e.id}">${esc(e.name)}</option>`, 'Who are you?');
   syncSelect('sel-location-d',  state.locations,  l=>`<option value="${l.id}">${esc(l.name)}${l.isHome?' 🏠':''}</option>`, 'Where are you?');
 
   // Auto-select current user
@@ -808,7 +812,7 @@ function syncSelect(id, items, optFn, placeholder) {
 function renderEmployeeList() {
   const list=document.getElementById('employee-manage-list');
   if(!state.employees.length){list.innerHTML='<div class="no-items">No employees yet.</div>';return;}
-  list.innerHTML=state.employees.map(e=>{
+  list.innerHTML=[...state.employees].sort((a,b)=>a.name.localeCompare(b.name)).map(e=>{
     const loc=state.locations.find(l=>l.id===e.locationId);
     return `<div class="manage-item">
       <div class="manage-item-info">
@@ -934,11 +938,13 @@ async function updateEmployeeLocation(suffix) {
   if(!empHistory[empId]) empHistory[empId]=[];
   empHistory[empId].unshift({locName:loc.name,ts:Date.now()});
   empHistory[empId]=empHistory[empId].slice(0,5);
-  await saveState(); await saveHistory(); render();
-  // Clear location selects after check-in so user picks a new destination next time
+  // Render immediately (optimistic) — don't wait for network
+  render();
   document.getElementById('sel-location-m').value = '';
   document.getElementById('sel-location-d').value = '';
   playCheckin(); toast(emp.name+' → '+loc.name+(loc.isHome?' 🏠':'')+'!');
+  // Save in background
+  saveState(); saveHistory();
 }
 
 async function moveAll() {
@@ -952,15 +958,16 @@ async function moveAll() {
     empHistory[e.id].unshift({locName:loc.name,ts});
     empHistory[e.id]=empHistory[e.id].slice(0,5);
   });
-  await saveState(); await saveHistory(); render();
+  render();
   closeModal('modal-moveall'); playCheckin();
   toast('Everyone moved to '+loc.name+(loc.isHome?' 🏠':'')+'!');
+  saveState(); saveHistory();
 }
 
 async function confirmClearAll() {
   if(!confirm('Clear all check-ins?')) return;
   state.employees.forEach(e=>e.locationId=null);
-  await saveState(); render(); toast('All check-ins cleared.');
+  render(); toast('All check-ins cleared.'); saveState();
 }
 
 async function sendAnnouncement() {
