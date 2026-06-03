@@ -199,24 +199,7 @@ button { cursor: pointer; border: none; font-family: inherit; font-weight: 700; 
 .empty-loc::before { content: ''; display: block; width: 20px; height: 1px; background: var(--border); }
 .empty-loc::after  { content: ''; display: block; flex:1;   height: 1px; background: var(--border); }
 
-/* Global floating tooltip (JS-positioned, never clipped) */
-#global-tooltip {
-  position: fixed; z-index: 999; pointer-events: none; display: none;
-  background: #0a0c14; border: 1px solid var(--border);
-  border-radius: 10px; padding: 10px 13px; width: 210px;
-  box-shadow: 0 8px 28px rgba(0,0,0,.75);
-}
-#global-tooltip::after { content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%); border:5px solid transparent; border-top-color: var(--border); }
-#global-tooltip.above::after { top:100%; border-top-color: var(--border); border-bottom-color: transparent; }
-#global-tooltip.below { flex-direction: column; }
-#global-tooltip.below::after { top:auto; bottom:100%; border-top-color: transparent; border-bottom-color: var(--border); }
-.tip-name { font-size: 0.8rem; font-weight: 800; margin-bottom: 6px; color: var(--text); }
-.tip-title { font-size: 0.62rem; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 5px; }
-.tip-row { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; border-bottom: 1px solid var(--border); font-size: 0.74rem; }
-.tip-row:last-child { border: none; }
-.tip-loc { color: var(--text); font-weight: 500; }
-.tip-time { color: var(--muted); white-space: nowrap; flex-shrink: 0; }
-.tip-empty { font-size: 0.74rem; color: var(--muted); text-align: center; padding: 2px 0; }
+
 
 /* ── SIDEBAR (desktop check-in panel) ──────────────────────── */
 .sidebar-col { display: none; }
@@ -365,9 +348,6 @@ textarea:focus { outline: none; border-color: var(--accent); }
 </style>
 </head>
 <body>
-
-<!-- Global tooltip -->
-<div id="global-tooltip"></div>
 
 <!-- ══ NAME SCREEN ═══════════════════════════════════════════ -->
 <div id="name-screen">
@@ -662,19 +642,14 @@ async function loadAll() {
   }
 }
 
-let _skipState=false, _skipHistory=false, _skipAnn=false;
-
 async function saveState() {
-  _skipState=true;
   try { await fbPut(DB.state, state); localStorage.setItem('tt_state', JSON.stringify(state)); }
   catch(e) { setSyncStatus('error'); }
 }
 async function saveHistory() {
-  _skipHistory=true;
   try { await fbPut(DB.empHistory, empHistory); } catch(e){}
 }
 async function saveAnnouncement() {
-  _skipAnn=true;
   try { await fbPut(DB.announcement, announcement||null); } catch(e){}
 }
 
@@ -684,20 +659,17 @@ async function saveAnnouncement() {
 function startStreaming() {
   const ss = new EventSource(FIREBASE_URL+'/state.json?accept=text/event-stream');
   ss.addEventListener('put', e => {
-    if (_skipState) { _skipState=false; return; }
     try { const d=JSON.parse(e.data).data; if(d){state={employees:d.employees||[],locations:d.locations||[]};render();} setSyncStatus('connected'); } catch(err){}
   });
   ss.onerror = () => setSyncStatus('error');
 
   const hs = new EventSource(FIREBASE_URL+'/empHistory.json?accept=text/event-stream');
   hs.addEventListener('put', e => {
-    if (_skipHistory) { _skipHistory=false; return; }
     try { const d=JSON.parse(e.data).data; if(d&&typeof d==='object'){empHistory=d;renderBoard();} } catch(err){}
   });
 
   const as = new EventSource(FIREBASE_URL+'/announcement.json?accept=text/event-stream');
   as.addEventListener('put', e => {
-    if (_skipAnn) { _skipAnn=false; return; }
     try { const d=JSON.parse(e.data).data; announcement=(d&&d.msg)?d:null; renderAnnouncement(); } catch(err){}
   });
 }
@@ -990,63 +962,6 @@ function dismissAnnouncement() {
   localStorage.setItem('ann_'+(announcement.id||''),'1');
   renderAnnouncement();
 }
-
-// ════════════════════════════════════════════════════════════
-//  GLOBAL TOOLTIP (desktop hover, fixed position)
-// ════════════════════════════════════════════════════════════
-(function() {
-  const TT = document.getElementById('global-tooltip');
-  let hideTimer;
-
-  function showTooltip(bubble, e) {
-    const empId = bubble.dataset.empid;
-    const name  = bubble.dataset.name || '?';
-    let hist = [];
-    try { hist = JSON.parse(bubble.dataset.hist || '[]'); } catch(err){}
-
-    const rows = hist.length
-      ? hist.map(h=>`<div class="tip-row"><span class="tip-loc">📍 ${esc(h.locName)}</span><span class="tip-time">${relTime(h.ts)}</span></div>`).join('')
-      : '<div class="tip-empty">No history yet</div>';
-
-    TT.innerHTML = `<div class="tip-name">${esc(name)}</div><div class="tip-title">Recent locations</div>${rows}`;
-    TT.style.display = 'block';
-    TT.classList.remove('below');
-
-    // Position: above the avatar by default
-    const rect = bubble.getBoundingClientRect();
-    const ttW = 210, ttH = TT.offsetHeight || 120;
-    let left = rect.left + rect.width/2 - ttW/2;
-    let top  = rect.top - ttH - 10;
-
-    // Clamp horizontally
-    left = Math.max(8, Math.min(left, window.innerWidth - ttW - 8));
-
-    // If it would go above viewport, show below instead
-    if (top < 8) {
-      top = rect.bottom + 10;
-      TT.classList.add('below');
-    }
-
-    TT.style.left = left + 'px';
-    TT.style.top  = top  + 'px';
-  }
-
-  function hideTooltip() {
-    hideTimer = setTimeout(() => { TT.style.display='none'; }, 80);
-  }
-
-  // Only on hover-capable devices
-  if (window.matchMedia('(hover: hover)').matches) {
-    document.addEventListener('mouseover', e => {
-      const bubble = e.target.closest('.person-bubble');
-      if (bubble) { clearTimeout(hideTimer); showTooltip(bubble, e); }
-      else if (!TT.contains(e.target)) hideTooltip();
-    });
-    document.addEventListener('mouseout', e => {
-      if (!e.relatedTarget || !e.relatedTarget.closest('.person-bubble')) hideTooltip();
-    });
-  }
-})();
 
 // ════════════════════════════════════════════════════════════
 //  MOBILE MANAGE: long-press the ✓ button
