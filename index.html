@@ -368,6 +368,28 @@ textarea:focus { outline: none; border-color: var(--accent); }
 #empty-msg { color: var(--muted); text-align: center; padding: 40px 0 20px; font-size: 0.88rem; line-height: 1.8; grid-column: 1/-1; }
 .divider { height: 1px; background: var(--border); }
 
+/* Emoji picker */
+.emoji-btn {
+  background: none; border: none; font-size: 1rem; cursor: pointer;
+  padding: 2px 4px; border-radius: 6px; flex-shrink: 0; line-height: 1;
+  transition: background .15s;
+}
+.emoji-btn:hover { background: var(--surface3); }
+.emoji-picker {
+  position: fixed; z-index: 400;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 10px;
+  display: grid; grid-template-columns: repeat(6, 1fr);
+  gap: 4px; box-shadow: 0 8px 28px rgba(0,0,0,.6);
+  max-width: 220px;
+}
+.emoji-picker button {
+  background: none; border: none; font-size: 1.3rem; cursor: pointer;
+  padding: 5px; border-radius: 6px; line-height: 1;
+  transition: background .1s;
+}
+.emoji-picker button:hover { background: var(--surface2); }
+
 /* Location list sortable */
 .loc-manage-item {
   display: flex; align-items: center; justify-content: space-between;
@@ -853,7 +875,7 @@ function renderBoard() {
     return `<div class="location-card ${loc.isHome?'is-home':''}">
       <div class="loc-header">
         <div class="loc-title">
-          <div class="loc-icon-name">${loc.isHome?'🏠':'📍'} ${esc(loc.name)}</div>
+          <div class="loc-icon-name">${loc.emoji||( loc.isHome?'🏠':'📍')} ${esc(loc.name)}</div>
 
         </div>
         <span class="loc-count-pill ${hasPeople?'has-people':''}">${here.length}/${state.employees.length}</span>
@@ -867,10 +889,10 @@ function renderAllSelects() {
   // Mobile
   const sortedEmps = [...state.employees].sort((a,b)=>a.name.localeCompare(b.name));
   syncSelect('sel-employee-m', sortedEmps, e=>`<option value="${e.id}">${esc(e.name)}</option>`, 'Who are you?');
-  syncSelect('sel-location-m',  state.locations,  l=>`<option value="${l.id}">${esc(l.name)}${l.isHome?' 🏠':''}</option>`, 'Where?');
+  syncSelect('sel-location-m',  state.locations,  l=>`<option value="${l.id}">${l.emoji||'📍'} ${esc(l.name)}</option>`, 'Where?');
   // Desktop
   syncSelect('sel-employee-d', sortedEmps, e=>`<option value="${e.id}">${esc(e.name)}</option>`, 'Who are you?');
-  syncSelect('sel-location-d',  state.locations,  l=>`<option value="${l.id}">${esc(l.name)}${l.isHome?' 🏠':''}</option>`, 'Where are you?');
+  syncSelect('sel-location-d',  state.locations,  l=>`<option value="${l.id}">${l.emoji||'📍'} ${esc(l.name)}</option>`, 'Where are you?');
 
   // Auto-select current user
   ['sel-employee-m','sel-employee-d'].forEach(id => {
@@ -910,7 +932,7 @@ function renderLocationList() {
   list.innerHTML=state.locations.map((loc,i)=>`
     <div class="loc-manage-item" data-locid="${loc.id}" draggable="true">
       <span class="drag-handle" title="Drag to reorder">⠿</span>
-      <span style="font-size:1rem;flex-shrink:0">${loc.isHome?'🏠':'📍'}</span>
+      <button class="emoji-btn" onclick="openEmojiPicker('${loc.id}',this)" title="Change icon">${loc.emoji||'📍'}</button>
       <input class="loc-edit-input" value="${esc(loc.name)}" 
         onblur="renameLocation('${loc.id}',this.value)"
         onkeydown="if(event.key==='Enter')this.blur()"
@@ -1014,7 +1036,7 @@ function initDragSort() {
 
 function renderMoveAll() {
   const sel=document.getElementById('sel-moveall'),prev=sel.value;
-  sel.innerHTML='<option value="">— Pick a location —</option>'+state.locations.map(l=>`<option value="${l.id}">${esc(l.name)}${l.isHome?' 🏠':''}</option>`).join('');
+  sel.innerHTML='<option value="">— Pick a location —</option>'+state.locations.map(l=>`<option value="${l.id}">${l.emoji||'📍'} ${esc(l.name)}</option>`).join('');
   if(prev) sel.value=prev;
 }
 
@@ -1118,6 +1140,54 @@ async function removeLocation(id) {
   if(loc) toast(loc.name+' removed.');
 }
 
+// ── Emoji picker ──────────────────────────────────────────────
+const LOC_EMOJIS = ['📍','🏠','🏫','🏢','🏗','🏛','🏟','⛪','🏪','🏬','🏥','🏨','🏦','🏩','🏭','🏚','🗼','🗽','⛩','🕌','🕍','🛖','🏕','⛺','🌳','🌲','🏔','⛰','🌋','🗻','🏖','🏜','🏝','🚌','🚐','🚒','🚑','🚓','✈️','🚂','⚽','🎓','🎪','🎭','🎨','🛒','💒','🔧','💡','📦'];
+let _emojiPickerLocId = null;
+let _emojiPickerEl = null;
+
+function openEmojiPicker(locId, btnEl) {
+  // Close any existing picker
+  closeEmojiPicker();
+  _emojiPickerLocId = locId;
+
+  const picker = document.createElement('div');
+  picker.className = 'emoji-picker';
+  picker.id = 'emoji-picker';
+
+  LOC_EMOJIS.forEach(em => {
+    const btn = document.createElement('button');
+    btn.textContent = em;
+    btn.onclick = () => { setLocEmoji(locId, em); closeEmojiPicker(); };
+    picker.appendChild(btn);
+  });
+
+  document.body.appendChild(picker);
+  _emojiPickerEl = picker;
+
+  // Position near the button
+  const rect = btnEl.getBoundingClientRect();
+  let top = rect.bottom + 6;
+  let left = rect.left;
+  if (top + 200 > window.innerHeight) top = rect.top - 200 - 6;
+  if (left + 220 > window.innerWidth) left = window.innerWidth - 228;
+  picker.style.top = top + 'px';
+  picker.style.left = Math.max(8, left) + 'px';
+
+  // Close on outside click
+  setTimeout(() => document.addEventListener('click', closeEmojiPicker, {once:true}), 10);
+}
+
+function closeEmojiPicker() {
+  if (_emojiPickerEl) { _emojiPickerEl.remove(); _emojiPickerEl = null; }
+}
+
+async function setLocEmoji(locId, emoji) {
+  const loc = state.locations.find(l=>l.id===locId); if(!loc) return;
+  loc.emoji = emoji;
+  renderLocationList(); renderBoard(); renderAllSelects(); renderMoveAll();
+  await saveState();
+}
+
 async function renameLocation(id, newName) {
   newName = newName.trim();
   if (!newName) { renderLocationList(); return; }
@@ -1153,14 +1223,6 @@ async function updateEmployeeLocation(suffix) {
   document.getElementById('sel-location-d').value = '';
   playCheckin(); toast(emp.name+' → '+loc.name+(loc.isHome?' 🏠':'')+'!');
   await saveState(); await saveHistory(); await saveInroute();
-  // Auto-clear inroute after 5 min
-  setTimeout(async () => {
-    if (inroute[empId]) {
-      delete inroute[empId];
-      await saveInroute();
-      renderBoard();
-    }
-  }, INROUTE_MS);
 }
 
 async function moveAll() {
@@ -1246,6 +1308,16 @@ async function initApp() {
   render();
   renderAnnouncement();
   startStreaming();
+  // Poll every 30s to clear expired in-route badges on all devices
+  setInterval(async () => {
+    const now = Date.now();
+    const expired = Object.keys(inroute).filter(id => now - inroute[id] >= INROUTE_MS);
+    if (expired.length) {
+      expired.forEach(id => delete inroute[id]);
+      await saveInroute();
+      renderBoard();
+    }
+  }, 30000);
 }
 
 (function() {
