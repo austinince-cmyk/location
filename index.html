@@ -144,7 +144,7 @@ button { cursor: pointer; border: none; font-family: inherit; font-weight: 700; 
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 13px 13px 14px;
   display: flex; flex-direction: column; gap: 10px;
-  transition: border-color .2s;
+  transition: border-color .2s; overflow: visible;
 }
 .location-card.is-home {
   border-color: var(--home);
@@ -166,6 +166,7 @@ button { cursor: pointer; border: none; font-family: inherit; font-weight: 700; 
 .avatar-cluster {
   display: flex; flex-wrap: wrap; gap: 6px;
   min-height: 36px; align-content: flex-start;
+  overflow: visible;
 }
 
 .person-bubble {
@@ -198,22 +199,22 @@ button { cursor: pointer; border: none; font-family: inherit; font-weight: 700; 
 .empty-loc::before { content: ''; display: block; width: 20px; height: 1px; background: var(--border); }
 .empty-loc::after  { content: ''; display: block; flex:1;   height: 1px; background: var(--border); }
 
-/* Desktop tooltip on hover */
-.person-tooltip {
-  display: none; position: absolute; bottom: calc(100% + 8px); left: 50%;
-  transform: translateX(-50%); background: #0a0c14; border: 1px solid var(--border);
-  border-radius: 10px; padding: 9px 12px; width: 200px; z-index: 300;
-  box-shadow: 0 8px 28px rgba(0,0,0,.7); pointer-events: none;
+/* Global floating tooltip (JS-positioned, never clipped) */
+#global-tooltip {
+  position: fixed; z-index: 999; pointer-events: none; display: none;
+  background: #0a0c14; border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 13px; width: 210px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.75);
 }
-.person-tooltip::after { content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%); border:5px solid transparent; border-top-color: var(--border); }
-@media (hover: hover) {
-  .person-bubble:hover .person-tooltip { display: block; }
-}
-.tip-name { font-size: 0.8rem; font-weight: 800; margin-bottom: 7px; color: var(--text); }
+#global-tooltip::after { content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%); border:5px solid transparent; border-top-color: var(--border); }
+#global-tooltip.above::after { top:100%; border-top-color: var(--border); border-bottom-color: transparent; }
+#global-tooltip.below { flex-direction: column; }
+#global-tooltip.below::after { top:auto; bottom:100%; border-top-color: transparent; border-bottom-color: var(--border); }
+.tip-name { font-size: 0.8rem; font-weight: 800; margin-bottom: 6px; color: var(--text); }
 .tip-title { font-size: 0.62rem; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 5px; }
 .tip-row { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; border-bottom: 1px solid var(--border); font-size: 0.74rem; }
 .tip-row:last-child { border: none; }
-.tip-loc { color: var(--text); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tip-loc { color: var(--text); font-weight: 500; }
 .tip-time { color: var(--muted); white-space: nowrap; flex-shrink: 0; }
 .tip-empty { font-size: 0.74rem; color: var(--muted); text-align: center; padding: 2px 0; }
 
@@ -364,6 +365,9 @@ textarea:focus { outline: none; border-color: var(--accent); }
 </style>
 </head>
 <body>
+
+<!-- Global tooltip -->
+<div id="global-tooltip"></div>
 
 <!-- ══ NAME SCREEN ═══════════════════════════════════════════ -->
 <div id="name-screen">
@@ -756,14 +760,15 @@ function renderBoard() {
           const rows=hist.length
             ? hist.map(h=>`<div class="tip-row"><span class="tip-loc">📍 ${esc(h.locName)}</span><span class="tip-time">${relTime(h.ts)}</span></div>`).join('')
             : `<div class="tip-empty">No history yet</div>`;
-          return `<div class="person-bubble" onclick="openPersonSheet('${e.id}')" tabindex="0">
+          // Store tooltip data as data attributes, rendered via JS hover
+          const histJson = JSON.stringify(hist).replace(/"/g, '&quot;');
+          return `<div class="person-bubble" 
+            data-empid="${e.id}"
+            data-name="${esc(e.name)}"
+            data-hist="${histJson}"
+            onclick="openPersonSheet('${e.id}')" tabindex="0">
             <div class="person-avatar" style="background:${colorFor(e.id)}">${initials(e.name)}</div>
             <div class="person-name">${esc(e.name)}</div>
-            <div class="person-tooltip">
-              <div class="tip-name">${esc(e.name)}</div>
-              <div class="tip-title">Recent locations</div>
-              ${rows}
-            </div>
           </div>`;
         }).join('')
       : `<div class="empty-loc">empty</div>`;
@@ -936,6 +941,9 @@ async function updateEmployeeLocation(suffix) {
   empHistory[empId].unshift({locName:loc.name,ts:Date.now()});
   empHistory[empId]=empHistory[empId].slice(0,5);
   await saveState(); await saveHistory(); render();
+  // Clear location selects after check-in so user picks a new destination next time
+  document.getElementById('sel-location-m').value = '';
+  document.getElementById('sel-location-d').value = '';
   playCheckin(); toast(emp.name+' → '+loc.name+(loc.isHome?' 🏠':'')+'!');
 }
 
@@ -982,6 +990,63 @@ function dismissAnnouncement() {
   localStorage.setItem('ann_'+(announcement.id||''),'1');
   renderAnnouncement();
 }
+
+// ════════════════════════════════════════════════════════════
+//  GLOBAL TOOLTIP (desktop hover, fixed position)
+// ════════════════════════════════════════════════════════════
+(function() {
+  const TT = document.getElementById('global-tooltip');
+  let hideTimer;
+
+  function showTooltip(bubble, e) {
+    const empId = bubble.dataset.empid;
+    const name  = bubble.dataset.name || '?';
+    let hist = [];
+    try { hist = JSON.parse(bubble.dataset.hist || '[]'); } catch(err){}
+
+    const rows = hist.length
+      ? hist.map(h=>`<div class="tip-row"><span class="tip-loc">📍 ${esc(h.locName)}</span><span class="tip-time">${relTime(h.ts)}</span></div>`).join('')
+      : '<div class="tip-empty">No history yet</div>';
+
+    TT.innerHTML = `<div class="tip-name">${esc(name)}</div><div class="tip-title">Recent locations</div>${rows}`;
+    TT.style.display = 'block';
+    TT.classList.remove('below');
+
+    // Position: above the avatar by default
+    const rect = bubble.getBoundingClientRect();
+    const ttW = 210, ttH = TT.offsetHeight || 120;
+    let left = rect.left + rect.width/2 - ttW/2;
+    let top  = rect.top - ttH - 10;
+
+    // Clamp horizontally
+    left = Math.max(8, Math.min(left, window.innerWidth - ttW - 8));
+
+    // If it would go above viewport, show below instead
+    if (top < 8) {
+      top = rect.bottom + 10;
+      TT.classList.add('below');
+    }
+
+    TT.style.left = left + 'px';
+    TT.style.top  = top  + 'px';
+  }
+
+  function hideTooltip() {
+    hideTimer = setTimeout(() => { TT.style.display='none'; }, 80);
+  }
+
+  // Only on hover-capable devices
+  if (window.matchMedia('(hover: hover)').matches) {
+    document.addEventListener('mouseover', e => {
+      const bubble = e.target.closest('.person-bubble');
+      if (bubble) { clearTimeout(hideTimer); showTooltip(bubble, e); }
+      else if (!TT.contains(e.target)) hideTooltip();
+    });
+    document.addEventListener('mouseout', e => {
+      if (!e.relatedTarget || !e.relatedTarget.closest('.person-bubble')) hideTooltip();
+    });
+  }
+})();
 
 // ════════════════════════════════════════════════════════════
 //  MOBILE MANAGE: long-press the ✓ button
