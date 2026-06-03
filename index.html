@@ -484,19 +484,46 @@ let inroute={};
 const INROUTE_MS=5*60*1000;
 
 async function loadAll(){
-  try{setSyncStatus('');const[s,h,a,ir]=await Promise.all([fbGet(DB.state),fbGet(DB.empHistory),fbGet(DB.announcement),fbGet(DB.inroute)]);
-  if(s){
-    console.log('[loadAll] raw Firebase locations:', JSON.stringify((s.locations||[]).map(l=>({name:l.name,lat:l.lat,lng:l.lng}))));
-    state={employees:s.employees||[],locations:s.locations||[]};
+  try{
+    setSyncStatus('');
+    const[s,h,a,ir]=await Promise.all([fbGet(DB.state),fbGet(DB.empHistory),fbGet(DB.announcement),fbGet(DB.inroute)]);
+    if(s){
+      // Load any geo data we have cached locally (survives when Firebase lags)
+      let localLocs=[];
+      try{const r=localStorage.getItem('tt_state');if(r)localLocs=JSON.parse(r).locations||[];}catch(_){}
+
+      let needsSave=false;
+      const merged=(s.locations||[]).map(fl=>{
+        // Match by id first, then by name (for legacy entries with no id)
+        const ll=localLocs.find(l=>(fl.id&&l.id===fl.id)||(fl.name&&l.name===fl.name));
+        // Assign id if missing (legacy locations from old app)
+        if(!fl.id){ fl.id=uid(); needsSave=true; }
+        return {
+          id:fl.id, name:fl.name,
+          isHome:fl.isHome||false,
+          locationId:fl.locationId||null,
+          emoji:   fl.emoji   ||(ll&&ll.emoji)  ||'',
+          address: fl.address ||(ll&&ll.address) ||'',
+          lat:     fl.lat     ||(ll&&ll.lat)     ||null,
+          lng:     fl.lng     ||(ll&&ll.lng)     ||null,
+        };
+      });
+      state={employees:s.employees||[],locations:merged};
+      // If we had to mint new ids, push them back to Firebase so it's permanent
+      if(needsSave) setTimeout(saveState,800);
+    }
+    if(h&&typeof h==='object'&&!Array.isArray(h))empHistory=h;
+    if(a&&a.msg)announcement=a;
+    if(ir&&typeof ir==='object')inroute=ir;
+    setSyncStatus('connected');
+  }catch(e){
+    setSyncStatus('error');
+    try{const r=localStorage.getItem('tt_state');if(r)state=JSON.parse(r);}catch(_){}
   }
-  if(h&&typeof h==='object'&&!Array.isArray(h))empHistory=h;
-  if(a&&a.msg)announcement=a;
-  if(ir&&typeof ir==='object')inroute=ir;
-  setSyncStatus('connected');}catch(e){setSyncStatus('error');try{const r=localStorage.getItem('tt_state');if(r)state=JSON.parse(r);}catch(e2){}}
 }
 async function saveState(){
-  console.log('[saveState] locations with lat:', state.locations.map(l=>({name:l.name,lat:l.lat,lng:l.lng,addr:l.address})));
-  try{await fbPut(DB.state,state);localStorage.setItem('tt_state',JSON.stringify(state));}
+  localStorage.setItem('tt_state',JSON.stringify(state));
+  try{await fbPut(DB.state,state);}
   catch(e){setSyncStatus('error');toast('⚠️ Save failed.');}
 }
 async function saveHistory(){try{await fbPut(DB.empHistory,empHistory);}catch(e){}}
@@ -509,7 +536,7 @@ async function saveInroute(){try{await fbPut(DB.inroute,inroute);}catch(e){}}
 function startStreaming(){
   const ss=new EventSource(FIREBASE_URL+'/state.json?accept=text/event-stream');
   let ssR=false;
-  ss.addEventListener('put',e=>{try{if(!ssR){ssR=true;return;}const d=JSON.parse(e.data).data;if(!d)return;const sig=a=>JSON.stringify([...(a||[])].sort((x,y)=>x.id>y.id?1:-1).map(x=>x.id+'|'+(x.locationId||'')+'|'+(x.address||'')+'|'+(x.lat||'')));if(sig(d.employees)===sig(state.employees)&&sig(d.locations)===sig(state.locations))return;const remoteLocs=(d.locations||[]).map(rl=>{const local=state.locations.find(l=>l.id===rl.id);if(local&&local.lat&&!rl.lat){rl.lat=local.lat;rl.lng=local.lng;}return rl;});state={employees:d.employees||[],locations:remoteLocs};render();setSyncStatus('connected');}catch(err){}});
+  ss.addEventListener('put',e=>{try{if(!ssR){ssR=true;return;}const d=JSON.parse(e.data).data;if(!d)return;const sig=a=>JSON.stringify([...(a||[])].sort((x,y)=>x.id>y.id?1:-1).map(x=>x.id+'|'+(x.locationId||'')+'|'+(x.address||'')+'|'+(x.lat||'')));if(sig(d.employees)===sig(state.employees)&&sig(d.locations)===sig(state.locations))return;const remoteLocs=(d.locations||[]).map(rl=>{const local=state.locations.find(l=>l.id===rl.id||l.name===rl.name);return Object.assign({},rl,{address:rl.address||(local&&local.address)||'',lat:rl.lat||(local&&local.lat)||null,lng:rl.lng||(local&&local.lng)||null,emoji:rl.emoji||(local&&local.emoji)||'',});});state={employees:d.employees||[],locations:remoteLocs};localStorage.setItem('tt_state',JSON.stringify(state));render();setSyncStatus('connected');}catch(err){}});
   ss.onerror=()=>setSyncStatus('error');
   const hs=new EventSource(FIREBASE_URL+'/empHistory.json?accept=text/event-stream');let hsR=false;
   hs.addEventListener('put',e=>{try{if(!hsR){hsR=true;return;}const d=JSON.parse(e.data).data;if(d&&typeof d==='object'){empHistory=d;renderBoard();renderMapMarkers();}}catch(err){}});
