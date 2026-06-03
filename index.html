@@ -6,6 +6,7 @@
 <title>TeamTrack</title>
 <script>
   const FIREBASE_URL = 'https://team-tracker-39b49-default-rtdb.firebaseio.com';
+  const MANAGER_NAMES = ['austin', 'greg'];
 </script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -217,6 +218,10 @@ button { cursor: pointer; border: none; font-family: inherit; font-weight: 700; 
   border-radius: var(--radius); padding: 16px;
   display: flex; flex-direction: column; gap: 8px;
 }
+.manager-only { display: none !important; }
+.is-manager .manager-only { display: flex !important; }
+.is-manager .manager-only.modal-backdrop { display: none !important; }
+.is-manager .manager-only.modal-backdrop.open { display: flex !important; }
 .manage-panel .panel-title { color: var(--muted); }
 .manage-btn {
   display: flex; align-items: center; gap: 10px;
@@ -416,8 +421,8 @@ textarea:focus { outline: none; border-color: var(--accent); }
       <button class="btn-primary btn-full" onclick="updateEmployeeLocation('d')">Check In</button>
     </div>
 
-    <!-- Manage panel -->
-    <div class="manage-panel">
+    <!-- Manage panel (managers only) -->
+    <div class="manage-panel manager-only">
       <div class="panel-title">Manage</div>
       <button class="manage-btn" onclick="openModal('modal-employees')"><span class="mb-icon">👥</span> Employees</button>
       <button class="manage-btn" onclick="openModal('modal-locations')"><span class="mb-icon">📍</span> Locations</button>
@@ -460,7 +465,7 @@ textarea:focus { outline: none; border-color: var(--accent); }
 <!-- ══ MODALS ════════════════════════════════════════════════ -->
 
 <!-- Manage (mobile) — triggered by holding the bottom bar or a manage button -->
-<div class="modal-backdrop" id="modal-manage">
+<div class="modal-backdrop manager-only" id="modal-manage">
   <div class="modal">
     <div class="modal-handle"></div>
     <h2>⚙️ Manage</h2>
@@ -603,6 +608,7 @@ document.getElementById('input-name').addEventListener('keydown', e => { if(e.ke
 function showApp(name) {
   document.getElementById('name-screen').style.display = 'none';
   updateUserUI(name);
+  if (isManager()) document.body.classList.add('is-manager');
   initApp();
 }
 
@@ -615,6 +621,10 @@ function updateUserUI(name) {
   document.getElementById('account-avatar').textContent = ini;
   document.getElementById('account-avatar').style.background = col;
   document.getElementById('account-name-label').textContent = name;
+}
+
+function isManager() {
+  return MANAGER_NAMES.includes((currentName||'').trim().toLowerCase());
 }
 
 // ════════════════════════════════════════════════════════════
