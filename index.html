@@ -674,101 +674,57 @@ async function tryZipFallback(address){
 
 function initLeaflet(){
   leafletMap=L.map('leaflet-map',{zoomControl:true}).setView([32.9,-97.0],11);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    maxZoom:19
+  // Dark map tiles — CartoDB Dark Matter, free, no key required
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+    attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains:'abcd', maxZoom:20
   }).addTo(leafletMap);
   renderMapMarkers();
 }
 
 
-// Marker: card with name row on top, avatar bubbles row below.
-// Each avatar shows initials + 🚗 car badge if en route.
+// Compact teardrop pin — fixed 44px wide, never overlaps neighbors.
+// Shows: emoji in the pin body, person-count badge top-right, en-route pulse ring.
+// All detail (name, avatars, roster) lives in the popup on click.
 function buildLeafletIcon(loc, people){
+  const accent  = loc.isHome ? '#d97706' : '#3451c7';
   const accentL = loc.isHome ? '#f59e0b' : '#4f6ef7';
   const emoji   = loc.emoji || (loc.isHome ? '🏠' : '📍');
-  const label   = loc.name.length > 16 ? loc.name.slice(0,15)+'…' : loc.name;
   const count   = people.length;
+  const anyInRoute = people.some(e => inroute[e.id] && (Date.now()-inroute[e.id]) < INROUTE_MS);
 
-  const AVR  = 12;   // avatar radius
-  const GAP  = 4;    // gap between avatars
-  const STEP = AVR*2 + GAP;
-  const MAX_SHOW = 5;
-  const showCount = Math.min(count, MAX_SHOW);
-  const hasMore   = count > MAX_SHOW;
+  // Fixed pin dimensions
+  const W = 44, H = 44, TAIL = 12, TOTAL_H = H + TAIL;
+  const cx = W/2, cy = H/2;
+  const R = 20; // circle radius
 
-  // Card dimensions
-  const LABEL_W  = Math.max(label.length * 7.5 + 28, 70);
-  const AVA_W    = showCount > 0 ? (showCount + (hasMore?1:0)) * STEP - GAP + 8 : 0;
-  const W        = Math.max(LABEL_W, AVA_W + 8);
-  const NAME_H   = 28;
-  const AVA_H    = showCount > 0 ? AVR*2 + 8 : 0;
-  const CARD_H   = NAME_H + AVA_H;
-  const TAIL     = 9;
-  const TOTAL_H  = CARD_H + TAIL;
-  const cx       = W / 2;
+  // Pulse ring for en-route (behind the pin)
+  const pulse = anyInRoute ? `
+    <circle cx="${cx}" cy="${cy}" r="${R+6}" fill="none" stroke="#f59e0b" stroke-width="2.5" opacity="0.7">
+      <animate attributeName="r" values="${R+3};${R+11};${R+3}" dur="1.4s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.8;0;0.8" dur="1.4s" repeatCount="indefinite"/>
+    </circle>` : '';
 
-  // Name row
-  const nameRow = `
-    <rect x="0" y="0" width="${W}" height="${NAME_H}" rx="0" fill="${accentL}"/>
-    <text x="6" y="${NAME_H/2}" dominant-baseline="central" font-size="11" font-weight="800"
-      fill="white" font-family="-apple-system,system-ui,sans-serif">${emoji} ${label}</text>`;
-
-  // Avatar row
-  let avaRow = '';
-  if(showCount > 0){
-    // center the avatar row
-    const totalAvaW = (showCount + (hasMore?1:0)) * STEP - GAP;
-    const startX = (W - totalAvaW) / 2 + AVR;
-    for(let i=0; i<showCount; i++){
-      const e   = people[i];
-      const cx2 = startX + i*STEP;
-      const cy2 = NAME_H + 4 + AVR;
-      const ir  = inroute[e.id] && (Date.now()-inroute[e.id]) < INROUTE_MS;
-      if(ir){
-        // Animated pulse ring behind avatar for en-route
-        avaRow += `<circle cx="${cx2}" cy="${cy2}" r="${AVR+5}" fill="none" stroke="#f59e0b" stroke-width="2" opacity="0.7">
-          <animate attributeName="r" values="${AVR+2};${AVR+8};${AVR+2}" dur="1.4s" repeatCount="indefinite"/>
-          <animate attributeName="opacity" values="0.8;0;0.8" dur="1.4s" repeatCount="indefinite"/>
-        </circle>`;
-      }
-      avaRow += `<circle cx="${cx2}" cy="${cy2}" r="${AVR}" fill="${colorFor(e.id)}" stroke="${ir?'#f59e0b':'white'}" stroke-width="${ir?2.5:1.5}"/>`;
-      avaRow += `<text x="${cx2}" y="${cy2}" text-anchor="middle" dominant-baseline="central" font-size="7.5" font-weight="900" fill="white" font-family="-apple-system,system-ui,sans-serif">${initials(e.name)}</text>`;
-      if(ir){
-        // Small car badge
-        avaRow += `<circle cx="${cx2+AVR-2}" cy="${cy2-AVR+2}" r="5.5" fill="#f59e0b" stroke="white" stroke-width="1"/>`;
-        avaRow += `<text x="${cx2+AVR-2}" y="${cy2-AVR+2}" text-anchor="middle" dominant-baseline="central" font-size="6.5">🚗</text>`;
-      }
-    }
-    if(hasMore){
-      const cx2 = startX + showCount*STEP;
-      const cy2 = NAME_H + 4 + AVR;
-      avaRow += `<circle cx="${cx2}" cy="${cy2}" r="${AVR}" fill="#374151" stroke="white" stroke-width="1.5"/>`;
-      avaRow += `<text x="${cx2}" y="${cy2}" text-anchor="middle" dominant-baseline="central" font-size="7.5" font-weight="900" fill="white" font-family="-apple-system,system-ui,sans-serif">+${count-MAX_SHOW}</text>`;
-    }
-  }
-
-  // Tail
-  const tail = `<polygon points="${cx-7},${CARD_H} ${cx+7},${CARD_H} ${cx},${TOTAL_H}" fill="white"/>`;
+  // Count badge (top-right of pin, hidden if 0)
+  const badge = count > 0 ? `
+    <circle cx="${W-8}" cy="9" r="9" fill="${accentL}" stroke="#0a0c12" stroke-width="1.5"/>
+    <text x="${W-8}" y="9" text-anchor="middle" dominant-baseline="central"
+      font-size="${count>9?'7':'8'}" font-weight="900" fill="white"
+      font-family="-apple-system,system-ui,sans-serif">${count>99?'99+':count}</text>` : '';
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${TOTAL_H}" viewBox="0 0 ${W} ${TOTAL_H}">
     <defs>
-      <filter id="ds${loc.id}" x="-30%" y="-30%" width="160%" height="160%">
-        <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.35"/>
+      <filter id="ds${loc.id.replace(/[^a-z0-9]/gi,'')}" x="-40%" y="-20%" width="180%" height="160%">
+        <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity="0.5"/>
       </filter>
-      <clipPath id="cp${loc.id}">
-        <rect x="0" y="0" width="${W}" height="${CARD_H}" rx="8" ry="8"/>
-      </clipPath>
     </defs>
-    <g filter="url(#ds${loc.id})">
-      <rect x="0" y="0" width="${W}" height="${CARD_H}" rx="8" ry="8" fill="white" stroke="${accentL}" stroke-width="2"/>
-      <g clip-path="url(#cp${loc.id})">
-        ${nameRow}
-        ${showCount>0 ? `<rect x="0" y="${NAME_H}" width="${W}" height="${AVA_H}" fill="#f8f9ff"/>` : ''}
-      </g>
-      ${avaRow}
-      ${tail}
+    ${pulse}
+    <g filter="url(#ds${loc.id.replace(/[^a-z0-9]/gi,'')})">
+      <circle cx="${cx}" cy="${cy}" r="${R}" fill="${accentL}" stroke="white" stroke-width="2.5"/>
+      <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-size="18">${emoji}</text>
+      <polygon points="${cx-7},${H-4} ${cx+7},${H-4} ${cx},${TOTAL_H-2}" fill="${accentL}"/>
     </g>
+    ${badge}
   </svg>`;
 
   return L.divIcon({
@@ -780,43 +736,7 @@ function buildLeafletIcon(loc, people){
   });
 }
 
-// Collision avoidance: recomputed fresh every render using stable sort order.
-// Same sort order = same angle = same visual position every time, no caching needed.
-// Groups markers within ~600m, fans them out by a fixed degree amount.
-function computeOffsets(locations, allPositions){
-  const offsets = {}; // locId -> {dlat, dlng}
-  const THRESH = 0.006; // ~600m — catches schools on the same campus
-  const used = new Set();
-  // Sort by id for consistent grouping order across renders
-  const locs = [...locations].filter(l => allPositions[l.id]).sort((a,b)=>a.id<b.id?-1:1);
 
-  locs.forEach(loc => {
-    if(used.has(loc.id)) return;
-    const p1 = allPositions[loc.id];
-    const group = [loc.id];
-    used.add(loc.id);
-    locs.forEach(loc2 => {
-      if(used.has(loc2.id)) return;
-      const p2 = allPositions[loc2.id];
-      const d = Math.sqrt(Math.pow(p1.lat-p2.lat,2)+Math.pow(p1.lng-p2.lng,2));
-      if(d < THRESH){ group.push(loc2.id); used.add(loc2.id); }
-    });
-    if(group.length < 2) return; // lone marker, no offset needed
-
-    const n = group.length;
-    // Spread radius grows with group size: ~200m base + 80m per extra member
-    const R = 0.0018 + (n - 2) * 0.0007;
-    group.forEach((id, k) => {
-      const base = allPositions[id];
-      const angle = (2 * Math.PI * k / n) - Math.PI / 2;
-      offsets[id] = {
-        dlat: R * Math.sin(angle),
-        dlng: R * Math.cos(angle) / Math.cos(base.lat * Math.PI / 180)
-      };
-    });
-  });
-  return offsets;
-}
 
 function renderMapMarkers(){
   if(!leafletMap) return;
@@ -835,20 +755,14 @@ function renderMapMarkers(){
     if(loc.lat && loc.lng) allPositions[loc.id] = {lat:loc.lat, lng:loc.lng};
   }
 
-  // Compute stable lat/lng offsets for nearby markers
-  const offsets = computeOffsets(state.locations, allPositions);
   const positions = [];
 
   for(const loc of state.locations){
-    const rawPos = allPositions[loc.id];
-    if(!rawPos){
+    const pos = allPositions[loc.id];
+    if(!pos){
       if(leafletMarkers[loc.id]){ leafletMarkers[loc.id].remove(); delete leafletMarkers[loc.id]; }
       continue;
     }
-    const off = offsets[loc.id];
-    const pos = off
-      ? {lat: rawPos.lat + off.dlat, lng: rawPos.lng + off.dlng}
-      : rawPos;
     const people = state.employees.filter(e=>e.locationId===loc.id);
     const icon = buildLeafletIcon(loc, people);
     const popup = buildPopupHTML(loc, people);
@@ -863,7 +777,7 @@ function renderMapMarkers(){
       m.on('click', ()=>highlightSidebarCard(loc.id));
       leafletMarkers[loc.id] = m;
     }
-    positions.push([rawPos.lat, rawPos.lng]);
+    positions.push([pos.lat, pos.lng]);
   }
 
   if(positions.length===1){ leafletMap.setView(positions[0], 14); }
@@ -875,18 +789,26 @@ function buildPopupHTML(loc, people){
   const rows = people.length
     ? people.map(e => {
         const ir = inroute[e.id] && (Date.now()-inroute[e.id])<INROUTE_MS;
-        return `<div style="display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid #1f243d">
-          <div style="width:24px;height:24px;border-radius:50%;background:${colorFor(e.id)};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#fff;flex-shrink:0">${initials(e.name)}</div>
-          <span style="font-size:12px;font-weight:600;flex:1">${esc(e.name)}</span>
-          ${ir?'<span style="font-size:10px">🚗</span>':''}
+        return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #252d4a">
+          <div style="position:relative;flex-shrink:0">
+            <div style="width:26px;height:26px;border-radius:50%;background:${colorFor(e.id)};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:#fff;border:${ir?'2px solid #f59e0b':'2px solid transparent'}">${initials(e.name)}</div>
+            ${ir?'<div style="position:absolute;top:-3px;right:-3px;background:#f59e0b;border-radius:50%;width:12px;height:12px;display:flex;align-items:center;justify-content:center;font-size:8px;border:1px solid #0a0c12">🚗</div>':''}
+          </div>
+          <span style="font-size:12px;font-weight:600;color:#e8eaf2;flex:1">${esc(e.name)}</span>
+          ${ir?'<span style="font-size:10px;color:#f59e0b;font-weight:700">En route</span>':''}
         </div>`;
       }).join('')
-    : '<div style="color:#4a5480;font-size:11px;padding:6px 0">Nobody here right now</div>';
+    : '<div style="color:#4a5480;font-size:11px;padding:6px 0;text-align:center">Nobody here right now</div>';
 
-  return `<div style="font-family:-apple-system,system-ui,sans-serif;min-width:160px;max-width:210px">
-    <div style="font-weight:800;font-size:13px;margin-bottom:2px;color:#e8eaf2">${loc.emoji||(loc.isHome?'🏠':'📍')} ${esc(loc.name)}</div>
-    ${loc.address?`<div style="color:#4a5480;font-size:10px;margin-bottom:6px">${esc(loc.address)}</div>`:''}
-    <div style="color:#e8eaf2">${rows}</div>
+  return `<div style="font-family:-apple-system,system-ui,sans-serif;min-width:170px;max-width:220px;background:#111420;border-radius:8px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      <span style="font-size:18px">${loc.emoji||(loc.isHome?'🏠':'📍')}</span>
+      <div>
+        <div style="font-weight:800;font-size:13px;color:#e8eaf2">${esc(loc.name)}</div>
+        ${loc.address?`<div style="color:#4a5480;font-size:10px;margin-top:1px">${esc(loc.address)}</div>`:''}
+      </div>
+    </div>
+    <div style="border-top:1px solid #252d4a;margin:0 -2px;padding-top:2px">${rows}</div>
   </div>`;
 }
 
