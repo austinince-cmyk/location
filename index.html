@@ -90,7 +90,6 @@ button { cursor: pointer; border: none; font-family: inherit; font-weight: 700; 
   overflow-y: auto;
 }
 
-/* Desktop: side-by-side */
 @media (min-width: 768px) {
   .page-wrap {
     flex-direction: row; align-items: flex-start;
@@ -106,7 +105,6 @@ button { cursor: pointer; border: none; font-family: inherit; font-weight: 700; 
   }
 }
 
-/* ── MAIN CONTENT (mobile) ─────────────────────────────────── */
 .board-col { flex: 1; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
 @media (min-width: 768px) { .board-col { padding: 0; } }
 
@@ -123,22 +121,13 @@ button { cursor: pointer; border: none; font-family: inherit; font-weight: 700; 
 .ann-msg { font-size: 0.85rem; line-height: 1.45; }
 .ann-dismiss { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 7px 12px; font-size: 0.75rem; font-weight: 700; cursor: pointer; flex-shrink: 0; align-self: center; touch-action: manipulation; }
 .ann-dismiss:active { background: #3a56d4; }
+.ann-time { font-size: 0.65rem; color: var(--muted); margin-top: 3px; }
 
 /* ── BOARD GRID ────────────────────────────────────────────── */
-#board {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
-@media (min-width: 600px) and (max-width: 767px) {
-  #board { grid-template-columns: repeat(3, 1fr); }
-}
-@media (min-width: 768px) {
-  #board { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-}
-@media (min-width: 1024px) {
-  #board { grid-template-columns: repeat(3, 1fr); }
-}
+#board { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+@media (min-width: 600px) and (max-width: 767px) { #board { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 768px) { #board { grid-template-columns: repeat(2, 1fr); gap: 12px; } }
+@media (min-width: 1024px) { #board { grid-template-columns: repeat(3, 1fr); } }
 
 /* ── LOCATION CARD ─────────────────────────────────────────── */
 .location-card {
@@ -151,11 +140,9 @@ button { cursor: pointer; border: none; font-family: inherit; font-weight: 700; 
   border-color: var(--home);
   box-shadow: 0 0 0 1px rgba(245,158,11,.15), 0 0 20px rgba(245,158,11,.07);
 }
-
 .loc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
 .loc-title { font-size: 0.82rem; font-weight: 800; line-height: 1.3; display: flex; flex-direction: column; gap: 3px; }
 .loc-icon-name { display: flex; align-items: center; gap: 5px; }
-
 .loc-count-pill {
   font-size: 0.68rem; font-weight: 700; color: var(--muted);
   background: var(--surface2); border: 1px solid var(--border);
@@ -163,17 +150,15 @@ button { cursor: pointer; border: none; font-family: inherit; font-weight: 700; 
 }
 .loc-count-pill.has-people { color: var(--accent2); border-color: rgba(110,231,183,.3); background: rgba(110,231,183,.06); }
 
-/* Avatar cluster */
+/* ── AVATAR CLUSTER ────────────────────────────────────────── */
 .avatar-cluster {
   display: flex; flex-wrap: wrap; gap: 6px;
-  min-height: 36px; align-content: flex-start;
-  overflow: visible;
+  min-height: 36px; align-content: flex-start; overflow: visible;
 }
 
 .person-bubble {
   display: flex; flex-direction: column; align-items: center; gap: 3px;
-  cursor: default; position: relative;
-  animation: popIn .2s ease;
+  cursor: default; position: relative; animation: popIn .2s ease;
 }
 @keyframes popIn { from { opacity:0; transform: scale(.8); } to { opacity:1; transform: none; } }
 
@@ -182,10 +167,31 @@ button { cursor: pointer; border: none; font-family: inherit; font-weight: 700; 
   display: flex; align-items: center; justify-content: center;
   font-size: 0.72rem; font-weight: 900; color: #fff; flex-shrink: 0;
   border: 2px solid transparent; transition: transform .15s, border-color .15s;
+  position: relative; z-index: 1;
 }
 .person-bubble:hover .person-avatar,
 .person-bubble:focus .person-avatar { transform: scale(1.12); }
 .is-home .person-avatar { border-color: rgba(245,158,11,.5); }
+
+/* En-route: amber border on avatar + pulsing ring behind it */
+.person-avatar.is-inroute {
+  border-color: var(--home) !important;
+}
+.person-bubble.is-inroute::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 2.5px solid var(--home);
+  transform: translate(-50%, -50%);
+  animation: pulseRing 1.4s ease-out infinite;
+  z-index: 0;
+}
+@keyframes pulseRing {
+  0%   { transform: translate(-50%, -50%) scale(1);    opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(1.9);  opacity: 0; }
+}
 
 .person-name {
   font-size: 0.6rem; font-weight: 600; color: var(--muted);
@@ -193,16 +199,19 @@ button { cursor: pointer; border: none; font-family: inherit; font-weight: 700; 
   text-overflow: ellipsis; text-align: center; line-height: 1.1;
 }
 
+/* En-route name label */
+.person-name.is-inroute {
+  color: var(--home);
+}
+
 .empty-loc {
   font-size: 0.75rem; color: var(--muted); padding: 6px 0;
   display: flex; align-items: center; gap: 5px;
 }
 .empty-loc::before { content: ''; display: block; width: 20px; height: 1px; background: var(--border); }
-.empty-loc::after  { content: ''; display: block; flex:1;   height: 1px; background: var(--border); }
+.empty-loc::after  { content: ''; display: block; flex:1; height: 1px; background: var(--border); }
 
-
-
-/* ── SIDEBAR (desktop check-in panel) ──────────────────────── */
+/* ── SIDEBAR ───────────────────────────────────────────────── */
 .sidebar-col { display: none; }
 @media (min-width: 768px) { .sidebar-col { display: flex; } }
 
@@ -235,7 +244,7 @@ button { cursor: pointer; border: none; font-family: inherit; font-weight: 700; 
 .manage-btn.danger { color: var(--danger); }
 .manage-btn.warn { color: var(--home); }
 
-/* ── BOTTOM BAR (mobile only) ──────────────────────────────── */
+/* ── BOTTOM BAR ────────────────────────────────────────────── */
 #bottom-bar {
   position: fixed; bottom: 0; left: 0; right: 0;
   background: var(--surface); border-top: 1px solid var(--border);
@@ -251,8 +260,7 @@ select, input[type="text"] {
   font-size: 0.85rem; font-family: inherit; width: 100%;
   -webkit-appearance: none; appearance: none; transition: border-color .15s;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a6280'/%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: right 12px center;
-  padding-right: 30px;
+  background-repeat: no-repeat; background-position: right 12px center; padding-right: 30px;
 }
 select:focus, input[type="text"]:focus { outline: none; border-color: var(--accent); }
 select option { background: var(--surface2); }
@@ -277,7 +285,7 @@ select option { background: var(--surface2); }
 .name-field label { font-size: 0.72rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
 .name-field input { font-size: 1rem; padding: 14px 14px; border-radius: 12px; }
 
-/* ── MODALS (bottom sheet) ─────────────────────────────────── */
+/* ── MODALS ────────────────────────────────────────────────── */
 .modal-backdrop {
   display: none; position: fixed; inset: 0;
   background: rgba(0,0,0,.72); z-index: 200;
@@ -290,8 +298,7 @@ select option { background: var(--surface2); }
   padding: 18px 18px; padding-bottom: calc(18px + var(--sb));
   width: 100%; max-width: 520px;
   display: flex; flex-direction: column; gap: 14px;
-  max-height: 88vh; overflow-y: auto;
-  animation: slideUp .22s ease;
+  max-height: 88vh; overflow-y: auto; animation: slideUp .22s ease;
 }
 @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
 .modal-handle { width: 34px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto -4px; flex-shrink: 0; }
@@ -299,7 +306,6 @@ select option { background: var(--surface2); }
 .modal-body { display: flex; flex-direction: column; gap: 9px; }
 .modal-footer { display: flex; gap: 8px; }
 .modal-footer button { flex: 1; }
-
 .manage-list { display: flex; flex-direction: column; gap: 7px; }
 .manage-item { display: flex; align-items: center; justify-content: space-between; background: var(--surface2); border-radius: 10px; padding: 11px 13px; gap: 10px; }
 .manage-item-info { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 0; }
@@ -312,7 +318,7 @@ textarea { background: var(--surface2); border: 1px solid var(--border); border-
 textarea:focus { outline: none; border-color: var(--accent); }
 .no-items { color: var(--muted); font-size: 0.82rem; text-align: center; padding: 14px; }
 
-/* ── MOBILE PERSON DETAIL SHEET ────────────────────────────── */
+/* ── PERSON SHEET ──────────────────────────────────────────── */
 #person-sheet {
   display: none; position: fixed; inset: 0;
   background: rgba(0,0,0,.72); z-index: 250;
@@ -324,8 +330,7 @@ textarea:focus { outline: none; border-color: var(--accent); }
   border-radius: 20px 20px 0 0;
   padding: 18px; padding-bottom: calc(18px + var(--sb));
   width: 100%; max-width: 400px;
-  display: flex; flex-direction: column; gap: 14px;
-  animation: slideUp .22s ease;
+  display: flex; flex-direction: column; gap: 14px; animation: slideUp .22s ease;
 }
 .ps-header { display: flex; align-items: center; gap: 12px; }
 .ps-avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 900; color: #fff; flex-shrink: 0; }
@@ -345,19 +350,6 @@ textarea:focus { outline: none; border-color: var(--accent); }
 .ps-footer { display: flex; gap: 8px; }
 .ps-footer button { flex: 1; }
 
-/* In-route indicator */
-.person-bubble { position: relative; }
-.inroute-badge {
-  position: absolute; top: -4px; right: -4px;
-  font-size: 0.7rem; line-height: 1;
-  background: var(--surface); border-radius: 50%;
-  width: 18px; height: 18px;
-  display: flex; align-items: center; justify-content: center;
-  border: 1px solid var(--border);
-  animation: routePulse 1.5s ease-in-out infinite;
-}
-@keyframes routePulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.18); } }
-
 /* ── TOAST ─────────────────────────────────────────────────── */
 #toast-container { position: fixed; top: 68px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 7px; z-index: 500; pointer-events: none; width: 92%; max-width: 320px; }
 .toast { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent2); border-radius: 12px; padding: 10px 15px; font-size: 0.83rem; box-shadow: 0 8px 24px rgba(0,0,0,.5); animation: toastIn .22s ease; text-align: center; width: 100%; }
@@ -368,56 +360,29 @@ textarea:focus { outline: none; border-color: var(--accent); }
 #empty-msg { color: var(--muted); text-align: center; padding: 40px 0 20px; font-size: 0.88rem; line-height: 1.8; grid-column: 1/-1; }
 .divider { height: 1px; background: var(--border); }
 
-/* Emoji picker */
-.emoji-btn {
-  background: none; border: none; font-size: 1rem; cursor: pointer;
-  padding: 2px 4px; border-radius: 6px; flex-shrink: 0; line-height: 1;
-  transition: background .15s;
-}
+/* ── EMOJI PICKER ──────────────────────────────────────────── */
+.emoji-btn { background: none; border: none; font-size: 1rem; cursor: pointer; padding: 2px 4px; border-radius: 6px; flex-shrink: 0; line-height: 1; transition: background .15s; }
 .emoji-btn:hover { background: var(--surface3); }
-.emoji-picker {
-  position: fixed; z-index: 400;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 12px; padding: 10px;
-  display: grid; grid-template-columns: repeat(6, 1fr);
-  gap: 4px; box-shadow: 0 8px 28px rgba(0,0,0,.6);
-  max-width: 220px;
-}
-.emoji-picker button {
-  background: none; border: none; font-size: 1.3rem; cursor: pointer;
-  padding: 5px; border-radius: 6px; line-height: 1;
-  transition: background .1s;
-}
+.emoji-picker { position: fixed; z-index: 400; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; box-shadow: 0 8px 28px rgba(0,0,0,.6); max-width: 220px; }
+.emoji-picker button { background: none; border: none; font-size: 1.3rem; cursor: pointer; padding: 5px; border-radius: 6px; line-height: 1; transition: background .1s; }
 .emoji-picker button:hover { background: var(--surface2); }
 
-/* Location list sortable */
-.loc-manage-item {
-  display: flex; align-items: center; justify-content: space-between;
-  background: var(--surface2); border-radius: 10px; padding: 10px 13px; gap: 8px;
-  transition: box-shadow .15s, opacity .15s;
-  touch-action: none;
-}
+/* ── LOCATION LIST ─────────────────────────────────────────── */
+.loc-manage-item { display: flex; align-items: center; justify-content: space-between; background: var(--surface2); border-radius: 10px; padding: 10px 13px; gap: 8px; transition: box-shadow .15s, opacity .15s; touch-action: none; }
 .loc-manage-item.dragging { opacity: .4; box-shadow: 0 4px 20px rgba(0,0,0,.5); }
 .loc-manage-item.drag-over { box-shadow: 0 0 0 2px var(--accent); }
 .drag-handle { font-size: 1rem; color: var(--muted); cursor: grab; padding: 0 4px; flex-shrink: 0; user-select: none; }
 .drag-handle:active { cursor: grabbing; }
-.loc-edit-input {
-  background: transparent; border: none; border-bottom: 1px solid var(--accent);
-  color: var(--text); font-size: 0.88rem; font-weight: 700; font-family: inherit;
-  width: 100%; outline: none; padding: 1px 2px;
-}
+.loc-edit-input { background: transparent; border: none; border-bottom: 1px solid var(--accent); color: var(--text); font-size: 0.88rem; font-weight: 700; font-family: inherit; width: 100%; outline: none; padding: 1px 2px; }
 .loc-item-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
 .btn-icon { background: none; border: none; font-size: 1rem; padding: 4px 6px; border-radius: 6px; cursor: pointer; color: var(--muted); transition: color .15s, background .15s; }
 .btn-icon:hover { background: var(--surface3); color: var(--text); }
 .btn-icon.danger:hover { color: var(--danger); }
-
-/* Announcement timestamp */
-.ann-time { font-size: 0.65rem; color: var(--muted); margin-top: 3px; }
 </style>
 </head>
 <body>
 
-<!-- ══ NAME SCREEN ═══════════════════════════════════════════ -->
+<!-- NAME SCREEN -->
 <div id="name-screen">
   <div class="name-card">
     <div class="name-logo">📍</div>
@@ -431,7 +396,7 @@ textarea:focus { outline: none; border-color: var(--accent); }
   </div>
 </div>
 
-<!-- ══ APP ═══════════════════════════════════════════════════ -->
+<!-- APP -->
 <header>
   <div class="logo">
     <span class="logo-icon">📍</span>
@@ -450,11 +415,7 @@ textarea:focus { outline: none; border-color: var(--accent); }
 </header>
 
 <div class="page-wrap">
-
-  <!-- ── BOARD COLUMN ──────────────────────────────────────── -->
   <div class="board-col">
-
-    <!-- Announcement -->
     <div id="announcement-bar">
       <div class="ann-icon">📢</div>
       <div class="ann-body">
@@ -464,28 +425,20 @@ textarea:focus { outline: none; border-color: var(--accent); }
       </div>
       <button class="ann-dismiss" onclick="dismissAnnouncement()">Got it</button>
     </div>
-
-    <!-- Location grid -->
     <div id="empty-msg" style="display:none;">
       No locations yet.<br>
       <span style="color:var(--accent);font-size:0.8rem;">Use ⚙️ Manage to add locations and people.</span>
     </div>
     <div id="board"></div>
-
   </div>
 
-  <!-- ── SIDEBAR (desktop) ─────────────────────────────────── -->
   <div class="sidebar-col">
-
-    <!-- Check-in panel -->
     <div class="checkin-panel">
       <div class="panel-title">✓ Check In</div>
       <select id="sel-employee-d"><option value="">Who are you?</option></select>
       <select id="sel-location-d"><option value="">Where are you?</option></select>
       <button class="btn-primary btn-full" onclick="updateEmployeeLocation('d')">Check In</button>
     </div>
-
-    <!-- Manage panel (managers only) -->
     <div class="manage-panel manager-only">
       <div class="panel-title">Manage</div>
       <button class="manage-btn" onclick="openModal('modal-employees')"><span class="mb-icon">👥</span> Employees</button>
@@ -495,22 +448,18 @@ textarea:focus { outline: none; border-color: var(--accent); }
       <button class="manage-btn warn" onclick="openModal('modal-moveall')"><span class="mb-icon">🚀</span> Move Everyone</button>
       <button class="manage-btn danger" onclick="confirmClearAll()"><span class="mb-icon">🗑</span> Clear All Check-Ins</button>
     </div>
-
   </div>
 </div>
 
-<!-- ── BOTTOM BAR (mobile) ───────────────────────────────────── -->
 <div id="bottom-bar">
   <select id="sel-employee-m"><option value="">Who are you?</option></select>
   <select id="sel-location-m"><option value="">Where?</option></select>
   <button class="btn-primary checkin-btn" onclick="updateEmployeeLocation('m')">✓</button>
 </div>
 
-<!-- Mobile: open manage via long-press on ✓ or dedicated button -->
-<!-- We add a small Manage button inside the bottom bar -->
 <div id="toast-container"></div>
 
-<!-- ══ PERSON DETAIL SHEET (mobile tap) ══════════════════════ -->
+<!-- PERSON SHEET -->
 <div id="person-sheet">
   <div class="person-sheet-inner">
     <div class="ps-header">
@@ -529,9 +478,7 @@ textarea:focus { outline: none; border-color: var(--accent); }
   </div>
 </div>
 
-<!-- ══ MODALS ════════════════════════════════════════════════ -->
-
-<!-- Manage (mobile) — triggered by holding the bottom bar or a manage button -->
+<!-- MODALS -->
 <div class="modal-backdrop manager-only" id="modal-manage">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -643,16 +590,11 @@ function setSyncStatus(s) {
   document.getElementById('sync-dot').className = 'sync-dot ' + s;
   document.getElementById('sync-label').textContent = {connected:'Live', syncing:'Saving…', error:'Offline', '':'…'}[s] || '–';
 }
-
-async function fbGet(url) {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error('GET ' + r.status);
-  return r.json();
-}
+async function fbGet(url) { const r=await fetch(url); if(!r.ok) throw new Error('GET '+r.status); return r.json(); }
 async function fbPut(url, data) {
   setSyncStatus('syncing');
-  const r = await fetch(url, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
-  if (!r.ok) throw new Error('PUT ' + r.status);
+  const r=await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+  if(!r.ok) throw new Error('PUT '+r.status);
   setSyncStatus('connected');
 }
 
@@ -661,48 +603,41 @@ async function fbPut(url, data) {
 // ════════════════════════════════════════════════════════════
 const NAME_KEY = 'tt_name';
 let currentName = null;
-
-function loadName() { return localStorage.getItem(NAME_KEY) || null; }
-function saveName(n) { localStorage.setItem(NAME_KEY, n); }
+function loadName() { return localStorage.getItem(NAME_KEY)||null; }
+function saveName(n) { localStorage.setItem(NAME_KEY,n); }
 function signOut() { localStorage.removeItem(NAME_KEY); location.reload(); }
-
 function submitName() {
-  const name = document.getElementById('input-name').value.trim();
-  if (!name) { document.getElementById('input-name').focus(); return; }
-  saveName(name); currentName = name; showApp(name);
+  const name=document.getElementById('input-name').value.trim();
+  if(!name){document.getElementById('input-name').focus();return;}
+  saveName(name);currentName=name;showApp(name);
 }
-document.getElementById('input-name').addEventListener('keydown', e => { if(e.key==='Enter') submitName(); });
-
+document.getElementById('input-name').addEventListener('keydown',e=>{if(e.key==='Enter')submitName();});
 function showApp(name) {
-  document.getElementById('name-screen').style.display = 'none';
+  document.getElementById('name-screen').style.display='none';
   updateUserUI(name);
-  if (isManager()) document.body.classList.add('is-manager');
+  if(isManager()) document.body.classList.add('is-manager');
   initApp();
 }
-
 function updateUserUI(name) {
-  const ini = name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
-  const col = colorFor(name);
-  document.getElementById('user-avatar').textContent = ini;
-  document.getElementById('user-avatar').style.background = col;
-  document.getElementById('user-name-label').textContent = name;
-  document.getElementById('account-avatar').textContent = ini;
-  document.getElementById('account-avatar').style.background = col;
-  document.getElementById('account-name-label').textContent = name;
+  const ini=name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  const col=colorFor(name);
+  document.getElementById('user-avatar').textContent=ini;
+  document.getElementById('user-avatar').style.background=col;
+  document.getElementById('user-name-label').textContent=name;
+  document.getElementById('account-avatar').textContent=ini;
+  document.getElementById('account-avatar').style.background=col;
+  document.getElementById('account-name-label').textContent=name;
 }
-
-function isManager() {
-  return MANAGER_NAMES.includes((currentName||'').trim().toLowerCase());
-}
+function isManager() { return MANAGER_NAMES.includes((currentName||'').trim().toLowerCase()); }
 
 // ════════════════════════════════════════════════════════════
 //  STATE
 // ════════════════════════════════════════════════════════════
-let state = { employees: [], locations: [] };
+let state = { employees:[], locations:[] };
 let empHistory = {};
 let announcement = null;
-let inroute = {};  // { empId: checkinTimestamp } — cleared after 5 min
-const INROUTE_MS = 5 * 60 * 1000; // 5 minutes
+let inroute = {};
+const INROUTE_MS = 10 * 60 * 1000; // 10 minutes
 
 // ════════════════════════════════════════════════════════════
 //  LOAD / SAVE
@@ -710,92 +645,58 @@ const INROUTE_MS = 5 * 60 * 1000; // 5 minutes
 async function loadAll() {
   try {
     setSyncStatus('');
-    const [s, h, a, ir] = await Promise.all([fbGet(DB.state), fbGet(DB.empHistory), fbGet(DB.announcement), fbGet(DB.inroute)]);
-    if (s) state = { employees: s.employees||[], locations: s.locations||[] };
-    if (h && typeof h==='object' && !Array.isArray(h)) empHistory = h;
-    if (a && a.msg) announcement = a;
-    if (ir && typeof ir==='object') inroute = ir;
+    const [s,h,a,ir]=await Promise.all([fbGet(DB.state),fbGet(DB.empHistory),fbGet(DB.announcement),fbGet(DB.inroute)]);
+    if(s) state={employees:s.employees||[],locations:s.locations||[]};
+    if(h&&typeof h==='object'&&!Array.isArray(h)) empHistory=h;
+    if(a&&a.msg) announcement=a;
+    if(ir&&typeof ir==='object') inroute=ir;
     setSyncStatus('connected');
   } catch(e) {
     setSyncStatus('error');
-    try { const r=localStorage.getItem('tt_state'); if(r) state=JSON.parse(r); } catch(e2){}
+    try{const r=localStorage.getItem('tt_state');if(r)state=JSON.parse(r);}catch(e2){}
   }
 }
-
-let _lastLocalWrite = 0;
-let _lastLocalHistWrite = 0;
-
 async function saveState() {
-  _lastLocalWrite = Date.now();
-  try {
-    await fbPut(DB.state, state);
-    localStorage.setItem('tt_state', JSON.stringify(state));
-  } catch(e) {
-    setSyncStatus('error');
-    console.error('saveState failed:', e);
-    toast('⚠️ Save failed — check connection.');
-  }
+  try{await fbPut(DB.state,state);localStorage.setItem('tt_state',JSON.stringify(state));}
+  catch(e){setSyncStatus('error');console.error('saveState failed:',e);toast('⚠️ Save failed — check connection.');}
 }
-async function saveHistory() {
-  _lastLocalHistWrite = Date.now();
-  try { await fbPut(DB.empHistory, empHistory); } catch(e){}
-}
-async function saveAnnouncement() {
-  try { await fbPut(DB.announcement, announcement||null); } catch(e){}
-}
-async function saveInroute() {
-  try { await fbPut(DB.inroute, inroute); } catch(e){}
-}
+async function saveHistory() { try{await fbPut(DB.empHistory,empHistory);}catch(e){} }
+async function saveAnnouncement() { try{await fbPut(DB.announcement,announcement||null);}catch(e){} }
+async function saveInroute() { try{await fbPut(DB.inroute,inroute);}catch(e){} }
 
 // ════════════════════════════════════════════════════════════
 //  STREAMING
 // ════════════════════════════════════════════════════════════
 function startStreaming() {
-  // State stream — skip first event (initial load), then apply remote changes only
-  const ss = new EventSource(FIREBASE_URL+'/state.json?accept=text/event-stream');
-  let ssReady = false;
-  ss.addEventListener('put', e => {
-    try {
-      if (!ssReady) { ssReady=true; return; } // skip initial snapshot, already loaded
-      const d=JSON.parse(e.data).data;
-      if (!d) return;
-      const toSig = arr => JSON.stringify([...(arr||[])].sort((a,b)=>a.id>b.id?1:-1).map(x=>x.id+'|'+(x.locationId||'')));
-      if (toSig(d.employees) === toSig(state.employees) && toSig(d.locations) === toSig(state.locations)) return;
+  const ss=new EventSource(FIREBASE_URL+'/state.json?accept=text/event-stream');
+  let ssReady=false;
+  ss.addEventListener('put',e=>{
+    try{
+      if(!ssReady){ssReady=true;return;}
+      const d=JSON.parse(e.data).data; if(!d) return;
+      const toSig=arr=>JSON.stringify([...(arr||[])].sort((a,b)=>a.id>b.id?1:-1).map(x=>x.id+'|'+(x.locationId||'')));
+      if(toSig(d.employees)===toSig(state.employees)&&toSig(d.locations)===toSig(state.locations)) return;
       state={employees:d.employees||[],locations:d.locations||[]};
-      render();
-      setSyncStatus('connected');
-    } catch(err){}
+      render(); setSyncStatus('connected');
+    }catch(err){}
   });
-  ss.onerror = () => setSyncStatus('error');
+  ss.onerror=()=>setSyncStatus('error');
 
-  // History stream
-  const hs = new EventSource(FIREBASE_URL+'/empHistory.json?accept=text/event-stream');
-  let hsReady = false;
-  hs.addEventListener('put', e => {
-    try {
-      if (!hsReady) { hsReady=true; return; }
-      const d=JSON.parse(e.data).data;
-      if (!d || typeof d!=='object') return;
-      empHistory=d; renderBoard();
-    } catch(err){}
+  const hs=new EventSource(FIREBASE_URL+'/empHistory.json?accept=text/event-stream');
+  let hsReady=false;
+  hs.addEventListener('put',e=>{
+    try{if(!hsReady){hsReady=true;return;}const d=JSON.parse(e.data).data;if(!d||typeof d!=='object')return;empHistory=d;renderBoard();}catch(err){}
   });
 
-  // Announcement stream
-  const as = new EventSource(FIREBASE_URL+'/announcement.json?accept=text/event-stream');
-  as.addEventListener('put', e => {
-    try { const d=JSON.parse(e.data).data; announcement=(d&&d.msg)?d:null; renderAnnouncement(); } catch(err){}
+  const as=new EventSource(FIREBASE_URL+'/announcement.json?accept=text/event-stream');
+  as.addEventListener('put',e=>{
+    try{const d=JSON.parse(e.data).data;announcement=(d&&d.msg)?d:null;renderAnnouncement();}catch(err){}
   });
 
-  // Inroute stream
-  const ir = new EventSource(FIREBASE_URL+'/inroute.json?accept=text/event-stream');
-  let irReady = false;
-  ir.addEventListener('put', e => {
-    try {
-      if (!irReady) { irReady=true; return; }
-      const d=JSON.parse(e.data).data;
-      inroute = (d && typeof d==='object') ? d : {};
-      renderBoard();
-    } catch(err){}
+  const ir=new EventSource(FIREBASE_URL+'/inroute.json?accept=text/event-stream');
+  let irReady=false;
+  ir.addEventListener('put',e=>{
+    try{if(!irReady){irReady=true;return;}const d=JSON.parse(e.data).data;inroute=(d&&typeof d==='object')?d:{};renderBoard();}catch(err){}
   });
 }
 
@@ -809,10 +710,8 @@ function colorFor(id) { return COLORS[[...id].reduce((a,c)=>a+c.charCodeAt(0),0)
 function esc(s) { return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function relTime(ts) {
   const m=Math.floor((Date.now()-ts)/60000);
-  if(m<1) return 'just now';
-  if(m<60) return m+'m ago';
-  const h=Math.floor(m/60);
-  if(h<24) return h+'h ago';
+  if(m<1) return 'just now'; if(m<60) return m+'m ago';
+  const h=Math.floor(m/60); if(h<24) return h+'h ago';
   return Math.floor(h/24)+'d ago';
 }
 
@@ -820,17 +719,9 @@ function relTime(ts) {
 //  SOUNDS
 // ════════════════════════════════════════════════════════════
 let _ac;
-function getAC() { if(!_ac) _ac=new(window.AudioContext||window.webkitAudioContext)(); return _ac; }
-function beep(f1,f2,type='sine') {
-  try {
-    const a=getAC(),t=a.currentTime;
-    [[f1,0],[f2,.16]].filter(([f])=>f).forEach(([f,d])=>{
-      const o=a.createOscillator(),g=a.createGain();
-      o.type=type;o.frequency.value=f;
-      g.gain.setValueAtTime(0,t+d);g.gain.linearRampToValueAtTime(.16,t+d+.02);g.gain.exponentialRampToValueAtTime(.001,t+d+.45);
-      o.connect(g);g.connect(a.destination);o.start(t+d);o.stop(t+d+.5);
-    });
-  } catch(e){}
+function getAC(){if(!_ac)_ac=new(window.AudioContext||window.webkitAudioContext)();return _ac;}
+function beep(f1,f2,type='sine'){
+  try{const a=getAC(),t=a.currentTime;[[f1,0],[f2,.16]].filter(([f])=>f).forEach(([f,d])=>{const o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.value=f;g.gain.setValueAtTime(0,t+d);g.gain.linearRampToValueAtTime(.16,t+d+.02);g.gain.exponentialRampToValueAtTime(.001,t+d+.45);o.connect(g);g.connect(a.destination);o.start(t+d);o.stop(t+d+.5);});}catch(e){}
 }
 function playCheckin(){beep(523,659);}
 function playAdd(){beep(440,880,'triangle');}
@@ -839,44 +730,34 @@ function playRemove(){beep(440,220,'triangle');}
 // ════════════════════════════════════════════════════════════
 //  RENDER
 // ════════════════════════════════════════════════════════════
-function render() { renderBoard(); renderAllSelects(); renderEmployeeList(); renderLocationList(); renderMoveAll(); }
+function render(){renderBoard();renderAllSelects();renderEmployeeList();renderLocationList();renderMoveAll();}
 
-function renderBoard() {
+function renderBoard(){
   const board=document.getElementById('board');
   const empty=document.getElementById('empty-msg');
-  if (!state.locations.length) { board.innerHTML=''; empty.style.display='block'; return; }
+  if(!state.locations.length){board.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
 
-  board.innerHTML = state.locations.map(loc => {
-    const here = state.employees.filter(e=>e.locationId===loc.id).sort((a,b)=>a.name.localeCompare(b.name));
-    const hasPeople = here.length > 0;
+  board.innerHTML=state.locations.map(loc=>{
+    const here=state.employees.filter(e=>e.locationId===loc.id).sort((a,b)=>a.name.localeCompare(b.name));
+    const hasPeople=here.length>0;
 
-    const bubbles = hasPeople
-      ? here.map(e => {
-          const hist=(empHistory[e.id]||[]).slice(0,5);
-          const rows=hist.length
-            ? hist.map(h=>`<div class="tip-row"><span class="tip-loc">📍 ${esc(h.locName)}</span><span class="tip-time">${relTime(h.ts)}</span></div>`).join('')
-            : `<div class="tip-empty">No history yet</div>`;
-          // Store tooltip data as data attributes, rendered via JS hover
-          const histJson = JSON.stringify(hist).replace(/"/g, '&quot;');
-          const isInroute = inroute[e.id] && (Date.now() - inroute[e.id]) < INROUTE_MS;
-          return `<div class="person-bubble" 
-            data-empid="${e.id}"
-            data-name="${esc(e.name)}"
-            data-hist="${histJson}"
-            onclick="openPersonSheet('${e.id}')" tabindex="0">
-            <div class="person-avatar" style="background:${colorFor(e.id)}">${initials(e.name)}</div>
-            <div class="person-name">${esc(e.name)}</div>
-            ${isInroute ? '<div class="inroute-badge">🚗</div>' : ''}
-          </div>`;
-        }).join('')
-      : `<div class="empty-loc">empty</div>`;
+    const bubbles=hasPeople
+      ?here.map(e=>{
+        const isInroute=inroute[e.id]&&(Date.now()-inroute[e.id])<INROUTE_MS;
+        return `<div class="person-bubble${isInroute?' is-inroute':''}"
+          data-empid="${e.id}"
+          onclick="openPersonSheet('${e.id}')" tabindex="0">
+          <div class="person-avatar${isInroute?' is-inroute':''}" style="background:${colorFor(e.id)}">${initials(e.name)}</div>
+          <div class="person-name${isInroute?' is-inroute':''}">${esc(e.name)}</div>
+        </div>`;
+      }).join('')
+      :`<div class="empty-loc">empty</div>`;
 
     return `<div class="location-card ${loc.isHome?'is-home':''}">
       <div class="loc-header">
         <div class="loc-title">
-          <div class="loc-icon-name">${loc.emoji||( loc.isHome?'🏠':'📍')} ${esc(loc.name)}</div>
-
+          <div class="loc-icon-name">${loc.emoji||(loc.isHome?'🏠':'📍')} ${esc(loc.name)}</div>
         </div>
         <span class="loc-count-pill ${hasPeople?'has-people':''}">${here.length}/${state.employees.length}</span>
       </div>
@@ -885,36 +766,26 @@ function renderBoard() {
   }).join('');
 }
 
-function renderAllSelects() {
-  const sortedEmps = [...state.employees].sort((a,b)=>a.name.localeCompare(b.name));
-  // Non-managers only see themselves in the employee dropdown
-  const visibleEmps = isManager()
-    ? sortedEmps
-    : sortedEmps.filter(e=>e.name.toLowerCase()===(currentName||'').toLowerCase());
-
-  syncSelect('sel-employee-m', visibleEmps, e=>`<option value="${e.id}">${esc(e.name)}</option>`, 'Who are you?');
-  syncSelect('sel-location-m', state.locations, l=>`<option value="${l.id}">${l.emoji||'📍'} ${esc(l.name)}</option>`, 'Where?');
-  syncSelect('sel-employee-d', visibleEmps, e=>`<option value="${e.id}">${esc(e.name)}</option>`, 'Who are you?');
-  syncSelect('sel-location-d', state.locations, l=>`<option value="${l.id}">${l.emoji||'📍'} ${esc(l.name)}</option>`, 'Where are you?');
-
-  // Auto-select current user (always, since they're likely the only option)
-  ['sel-employee-m','sel-employee-d'].forEach(id => {
+function renderAllSelects(){
+  const sortedEmps=[...state.employees].sort((a,b)=>a.name.localeCompare(b.name));
+  const visibleEmps=isManager()?sortedEmps:sortedEmps.filter(e=>e.name.toLowerCase()===(currentName||'').toLowerCase());
+  syncSelect('sel-employee-m',visibleEmps,e=>`<option value="${e.id}">${esc(e.name)}</option>`,'Who are you?');
+  syncSelect('sel-location-m',state.locations,l=>`<option value="${l.id}">${l.emoji||'📍'} ${esc(l.name)}</option>`,'Where?');
+  syncSelect('sel-employee-d',visibleEmps,e=>`<option value="${e.id}">${esc(e.name)}</option>`,'Who are you?');
+  syncSelect('sel-location-d',state.locations,l=>`<option value="${l.id}">${l.emoji||'📍'} ${esc(l.name)}</option>`,'Where are you?');
+  ['sel-employee-m','sel-employee-d'].forEach(id=>{
     const el=document.getElementById(id);
-    if (!el.value && currentName) {
-      const m=state.employees.find(e=>e.name.toLowerCase()===currentName.toLowerCase());
-      if(m) el.value=m.id;
-    }
+    if(!el.value&&currentName){const m=state.employees.find(e=>e.name.toLowerCase()===currentName.toLowerCase());if(m)el.value=m.id;}
   });
 }
 
-function syncSelect(id, items, optFn, placeholder) {
-  const el=document.getElementById(id);
-  const prev=el.value;
+function syncSelect(id,items,optFn,placeholder){
+  const el=document.getElementById(id);const prev=el.value;
   el.innerHTML=`<option value="">${placeholder}</option>`+items.map(optFn).join('');
-  if(prev) el.value=prev;
+  if(prev)el.value=prev;
 }
 
-function renderEmployeeList() {
+function renderEmployeeList(){
   const list=document.getElementById('employee-manage-list');
   if(!state.employees.length){list.innerHTML='<div class="no-items">No employees yet.</div>';return;}
   list.innerHTML=[...state.employees].sort((a,b)=>a.name.localeCompare(b.name)).map(e=>{
@@ -929,14 +800,14 @@ function renderEmployeeList() {
   }).join('');
 }
 
-function renderLocationList() {
+function renderLocationList(){
   const list=document.getElementById('location-manage-list');
   if(!state.locations.length){list.innerHTML='<div class="no-items">No locations yet.</div>';return;}
   list.innerHTML=state.locations.map((loc,i)=>`
     <div class="loc-manage-item" data-locid="${loc.id}" draggable="true">
       <span class="drag-handle" title="Drag to reorder">⠿</span>
       <button class="emoji-btn" onclick="openEmojiPicker('${loc.id}',this)" title="Change icon">${loc.emoji||'📍'}</button>
-      <input class="loc-edit-input" value="${esc(loc.name)}" 
+      <input class="loc-edit-input" value="${esc(loc.name)}"
         onblur="renameLocation('${loc.id}',this.value)"
         onkeydown="if(event.key==='Enter')this.blur()"
         style="flex:1;min-width:0;">
@@ -948,386 +819,245 @@ function renderLocationList() {
   initDragSort();
 }
 
-function initDragSort() {
-  const list = document.getElementById('location-manage-list');
-  let dragSrc = null;
-
-  list.querySelectorAll('.loc-manage-item').forEach(item => {
-    item.addEventListener('dragstart', e => {
-      dragSrc = item;
-      item.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-    });
-    item.addEventListener('dragend', () => {
-      item.classList.remove('dragging');
-      list.querySelectorAll('.loc-manage-item').forEach(i=>i.classList.remove('drag-over'));
-    });
-    item.addEventListener('dragover', e => {
-      e.preventDefault(); e.dataTransfer.dropEffect='move';
-      if (item !== dragSrc) {
-        list.querySelectorAll('.loc-manage-item').forEach(i=>i.classList.remove('drag-over'));
-        item.classList.add('drag-over');
-      }
-    });
-    item.addEventListener('drop', e => {
+function initDragSort(){
+  const list=document.getElementById('location-manage-list');
+  let dragSrc=null;
+  list.querySelectorAll('.loc-manage-item').forEach(item=>{
+    item.addEventListener('dragstart',e=>{dragSrc=item;item.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
+    item.addEventListener('dragend',()=>{item.classList.remove('dragging');list.querySelectorAll('.loc-manage-item').forEach(i=>i.classList.remove('drag-over'));});
+    item.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move';if(item!==dragSrc){list.querySelectorAll('.loc-manage-item').forEach(i=>i.classList.remove('drag-over'));item.classList.add('drag-over');}});
+    item.addEventListener('drop',e=>{
       e.preventDefault();
-      if (dragSrc && dragSrc !== item) {
-        // Reorder state.locations
-        const ids = [...list.querySelectorAll('.loc-manage-item')].map(el=>el.dataset.locid);
-        const srcId = dragSrc.dataset.locid;
-        const dstId = item.dataset.locid;
-        const srcIdx = ids.indexOf(srcId), dstIdx = ids.indexOf(dstId);
-        const srcLoc = state.locations.find(l=>l.id===srcId);
-        state.locations = state.locations.filter(l=>l.id!==srcId);
-        const newDstIdx = state.locations.findIndex(l=>l.id===dstId);
-        const insertAt = srcIdx < dstIdx ? newDstIdx+1 : newDstIdx;
-        state.locations.splice(insertAt, 0, srcLoc);
-        renderLocationList(); renderBoard(); renderAllSelects(); renderMoveAll();
-        saveState();
+      if(dragSrc&&dragSrc!==item){
+        const ids=[...list.querySelectorAll('.loc-manage-item')].map(el=>el.dataset.locid);
+        const srcId=dragSrc.dataset.locid,dstId=item.dataset.locid;
+        const srcIdx=ids.indexOf(srcId),dstIdx=ids.indexOf(dstId);
+        const srcLoc=state.locations.find(l=>l.id===srcId);
+        state.locations=state.locations.filter(l=>l.id!==srcId);
+        const newDstIdx=state.locations.findIndex(l=>l.id===dstId);
+        const insertAt=srcIdx<dstIdx?newDstIdx+1:newDstIdx;
+        state.locations.splice(insertAt,0,srcLoc);
+        renderLocationList();renderBoard();renderAllSelects();renderMoveAll();saveState();
       }
     });
   });
-
-  // Touch drag support
-  let touchSrc = null, touchClone = null, touchOffX = 0, touchOffY = 0;
-  list.querySelectorAll('.drag-handle').forEach(handle => {
-    handle.addEventListener('touchstart', e => {
-      const item = handle.closest('.loc-manage-item');
-      touchSrc = item;
-      const rect = item.getBoundingClientRect();
-      const t = e.touches[0];
-      touchOffX = t.clientX - rect.left;
-      touchOffY = t.clientY - rect.top;
-      touchClone = item.cloneNode(true);
-      touchClone.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;opacity:.7;pointer-events:none;z-index:9999;border-radius:10px;background:var(--surface2);`;
-      document.body.appendChild(touchClone);
-      item.style.opacity = '.3';
-    }, {passive:true});
-
-    handle.addEventListener('touchmove', e => {
-      if (!touchClone) return;
-      e.preventDefault();
-      const t = e.touches[0];
-      touchClone.style.left = (t.clientX - touchOffX) + 'px';
-      touchClone.style.top  = (t.clientY - touchOffY) + 'px';
-      // Highlight target
+  let touchSrc=null,touchClone=null,touchOffX=0,touchOffY=0;
+  list.querySelectorAll('.drag-handle').forEach(handle=>{
+    handle.addEventListener('touchstart',e=>{
+      const item=handle.closest('.loc-manage-item');touchSrc=item;
+      const rect=item.getBoundingClientRect(),t=e.touches[0];
+      touchOffX=t.clientX-rect.left;touchOffY=t.clientY-rect.top;
+      touchClone=item.cloneNode(true);
+      touchClone.style.cssText=`position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;opacity:.7;pointer-events:none;z-index:9999;border-radius:10px;background:var(--surface2);`;
+      document.body.appendChild(touchClone);item.style.opacity='.3';
+    },{passive:true});
+    handle.addEventListener('touchmove',e=>{
+      if(!touchClone)return;e.preventDefault();
+      const t=e.touches[0];touchClone.style.left=(t.clientX-touchOffX)+'px';touchClone.style.top=(t.clientY-touchOffY)+'px';
       list.querySelectorAll('.loc-manage-item').forEach(i=>i.classList.remove('drag-over'));
-      const elUnder = document.elementFromPoint(t.clientX, t.clientY)?.closest('.loc-manage-item');
-      if (elUnder && elUnder !== touchSrc) elUnder.classList.add('drag-over');
-    }, {passive:false});
-
-    handle.addEventListener('touchend', e => {
-      if (!touchClone) return;
-      const t = e.changedTouches[0];
-      const elUnder = document.elementFromPoint(t.clientX, t.clientY)?.closest('.loc-manage-item');
-      touchClone.remove(); touchClone = null;
-      if (touchSrc) touchSrc.style.opacity = '';
+      const elUnder=document.elementFromPoint(t.clientX,t.clientY)?.closest('.loc-manage-item');
+      if(elUnder&&elUnder!==touchSrc)elUnder.classList.add('drag-over');
+    },{passive:false});
+    handle.addEventListener('touchend',e=>{
+      if(!touchClone)return;
+      const t=e.changedTouches[0],elUnder=document.elementFromPoint(t.clientX,t.clientY)?.closest('.loc-manage-item');
+      touchClone.remove();touchClone=null;if(touchSrc)touchSrc.style.opacity='';
       list.querySelectorAll('.loc-manage-item').forEach(i=>i.classList.remove('drag-over'));
-      if (elUnder && elUnder !== touchSrc && touchSrc) {
-        const srcId = touchSrc.dataset.locid, dstId = elUnder.dataset.locid;
-        const srcLoc = state.locations.find(l=>l.id===srcId);
-        state.locations = state.locations.filter(l=>l.id!==srcId);
-        const newDstIdx = state.locations.findIndex(l=>l.id===dstId);
-        state.locations.splice(newDstIdx, 0, srcLoc);
-        renderLocationList(); renderBoard(); renderAllSelects(); renderMoveAll();
-        saveState();
+      if(elUnder&&elUnder!==touchSrc&&touchSrc){
+        const srcId=touchSrc.dataset.locid,dstId=elUnder.dataset.locid;
+        const srcLoc=state.locations.find(l=>l.id===srcId);
+        state.locations=state.locations.filter(l=>l.id!==srcId);
+        const newDstIdx=state.locations.findIndex(l=>l.id===dstId);
+        state.locations.splice(newDstIdx,0,srcLoc);
+        renderLocationList();renderBoard();renderAllSelects();renderMoveAll();saveState();
       }
-      touchSrc = null;
+      touchSrc=null;
     });
   });
 }
 
-function renderMoveAll() {
+function renderMoveAll(){
   const sel=document.getElementById('sel-moveall'),prev=sel.value;
   sel.innerHTML='<option value="">— Pick a location —</option>'+state.locations.map(l=>`<option value="${l.id}">${l.emoji||'📍'} ${esc(l.name)}</option>`).join('');
-  if(prev) sel.value=prev;
+  if(prev)sel.value=prev;
 }
 
-function renderAnnouncement() {
+function renderAnnouncement(){
   const bar=document.getElementById('announcement-bar');
   if(!announcement||!announcement.msg){bar.classList.remove('visible');return;}
   const key='ann_'+(announcement.id||'');
   if(localStorage.getItem(key)){bar.classList.remove('visible');return;}
   document.getElementById('ann-text').textContent=announcement.msg;
-  const annTimeEl = document.getElementById('ann-time');
-  if (annTimeEl && announcement.ts) {
-    const d = new Date(announcement.ts);
-    annTimeEl.textContent = 'Posted ' + d.toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
-  }
+  const annTimeEl=document.getElementById('ann-time');
+  if(annTimeEl&&announcement.ts){const d=new Date(announcement.ts);annTimeEl.textContent='Posted '+d.toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});}
   bar.classList.add('visible');
 }
 
 // ════════════════════════════════════════════════════════════
-//  PERSON DETAIL SHEET (mobile tap)
+//  PERSON SHEET
 // ════════════════════════════════════════════════════════════
-let _personSheetEmpId = null;
-
-function openPersonSheet(empId) {
-  const e=state.employees.find(x=>x.id===empId); if(!e) return;
-  _personSheetEmpId = empId;
+let _personSheetEmpId=null;
+function openPersonSheet(empId){
+  const e=state.employees.find(x=>x.id===empId);if(!e)return;
+  _personSheetEmpId=empId;
   const loc=state.locations.find(l=>l.id===e.locationId);
   const hist=(empHistory[empId]||[]).slice(0,5);
-  const isInroute = inroute[empId] && (Date.now() - inroute[empId]) < INROUTE_MS;
-
+  const isInroute=inroute[empId]&&(Date.now()-inroute[empId])<INROUTE_MS;
   document.getElementById('ps-avatar').textContent=initials(e.name);
   document.getElementById('ps-avatar').style.background=colorFor(e.id);
   document.getElementById('ps-name').textContent=e.name;
-
-  const locText = loc
-    ? (isInroute ? '🚗 En route to '+loc.name : '📍 '+loc.name)
-    : 'Not checked in';
-  document.getElementById('ps-loc').textContent=locText;
-
-  document.getElementById('ps-rows').innerHTML = hist.length
-    ? hist.map(h=>`<div class="ps-row"><span class="ps-row-loc">📍 ${esc(h.locName)}</span><span class="ps-row-time">${relTime(h.ts)}</span></div>`).join('')
-    : '<div class="ps-empty">No history yet</div>';
-
-  // Show checkout button only if they have a location
-  const checkoutBtn = document.getElementById('ps-checkout');
-  checkoutBtn.style.display = loc ? 'block' : 'none';
-
+  document.getElementById('ps-loc').textContent=loc?(isInroute?'🚗 En route to '+loc.name:'📍 '+loc.name):'Not checked in';
+  document.getElementById('ps-rows').innerHTML=hist.length?hist.map(h=>`<div class="ps-row"><span class="ps-row-loc">📍 ${esc(h.locName)}</span><span class="ps-row-time">${relTime(h.ts)}</span></div>`).join(''):'<div class="ps-empty">No history yet</div>';
+  document.getElementById('ps-checkout').style.display=loc?'block':'none';
   document.getElementById('person-sheet').classList.add('open');
 }
-
-function closePersonSheet() {
-  document.getElementById('person-sheet').classList.remove('open');
-}
-document.getElementById('person-sheet').addEventListener('click', e => {
-  if(e.target===document.getElementById('person-sheet')) closePersonSheet();
-});
+function closePersonSheet(){document.getElementById('person-sheet').classList.remove('open');}
+document.getElementById('person-sheet').addEventListener('click',e=>{if(e.target===document.getElementById('person-sheet'))closePersonSheet();});
 
 // ════════════════════════════════════════════════════════════
 //  ACTIONS
 // ════════════════════════════════════════════════════════════
-async function checkOutEmployee() {
-  const empId = _personSheetEmpId; if(!empId) return;
-  const emp = state.employees.find(e=>e.id===empId); if(!emp) return;
-  emp.locationId = null;
-  delete inroute[empId];
-  render();
-  closePersonSheet();
-  toast(emp.name+' checked out.');
-  await saveState(); await saveInroute();
+async function checkOutEmployee(){
+  const empId=_personSheetEmpId;if(!empId)return;
+  const emp=state.employees.find(e=>e.id===empId);if(!emp)return;
+  emp.locationId=null;delete inroute[empId];
+  render();closePersonSheet();toast(emp.name+' checked out.');
+  await saveState();await saveInroute();
 }
-
-async function addEmployee() {
-  const inp=document.getElementById('new-employee-name');
-  const name=inp.value.trim(); if(!name) return;
+async function addEmployee(){
+  const inp=document.getElementById('new-employee-name');const name=inp.value.trim();if(!name)return;
   if(state.employees.some(e=>e.name.toLowerCase()===name.toLowerCase())){toast('Already exists.');return;}
   state.employees.push({id:uid(),name,locationId:null});
-  await saveState(); render(); inp.value=''; playAdd(); toast(name+' added!');
+  await saveState();render();inp.value='';playAdd();toast(name+' added!');
 }
-
-async function removeEmployee(id) {
+async function removeEmployee(id){
   const emp=state.employees.find(e=>e.id===id);
-  state.employees=state.employees.filter(e=>e.id!==id);
-  delete empHistory[id];
-  await saveState(); await saveHistory(); render(); playRemove();
-  if(emp) toast(emp.name+' removed.');
+  state.employees=state.employees.filter(e=>e.id!==id);delete empHistory[id];
+  await saveState();await saveHistory();render();playRemove();if(emp)toast(emp.name+' removed.');
 }
-
-async function addLocation() {
-  const inp=document.getElementById('new-location-name');
-  const name=inp.value.trim(); if(!name) return;
+async function addLocation(){
+  const inp=document.getElementById('new-location-name');const name=inp.value.trim();if(!name)return;
   if(state.locations.some(l=>l.name.toLowerCase()===name.toLowerCase())){toast('Already exists.');return;}
   const isFirst=state.locations.length===0;
   state.locations.push({id:uid(),name,isHome:isFirst});
-  await saveState(); render(); inp.value=''; playAdd(); toast(name+' added!'+(isFirst?' (set as Home 🏠)':''));
+  await saveState();render();inp.value='';playAdd();toast(name+' added!'+(isFirst?' (set as Home 🏠)':''));
 }
-
-async function removeLocation(id) {
+async function removeLocation(id){
   const loc=state.locations.find(l=>l.id===id);
   state.employees.forEach(e=>{if(e.locationId===id)e.locationId=null;});
   state.locations=state.locations.filter(l=>l.id!==id);
-  await saveState(); render(); playRemove();
-  if(loc) toast(loc.name+' removed.');
+  await saveState();render();playRemove();if(loc)toast(loc.name+' removed.');
 }
 
-// ── Emoji picker ──────────────────────────────────────────────
-const LOC_EMOJIS = ['📍','🏠','🏫','🏢','🏗','🏛','🏟','⛪','🏪','🏬','🏥','🏨','🏦','🏩','🏭','🏚','🗼','🗽','⛩','🕌','🕍','🛖','🏕','⛺','🌳','🌲','🏔','⛰','🌋','🗻','🏖','🏜','🏝','🚌','🚐','🚒','🚑','🚓','✈️','🚂','⚽','🎓','🎪','🎭','🎨','🛒','💒','🔧','💡','📦'];
-let _emojiPickerLocId = null;
-let _emojiPickerEl = null;
-
-function openEmojiPicker(locId, btnEl) {
-  // Close any existing picker
-  closeEmojiPicker();
-  _emojiPickerLocId = locId;
-
-  const picker = document.createElement('div');
-  picker.className = 'emoji-picker';
-  picker.id = 'emoji-picker';
-
-  LOC_EMOJIS.forEach(em => {
-    const btn = document.createElement('button');
-    btn.textContent = em;
-    btn.onclick = () => { setLocEmoji(locId, em); closeEmojiPicker(); };
-    picker.appendChild(btn);
-  });
-
-  document.body.appendChild(picker);
-  _emojiPickerEl = picker;
-
-  // Position near the button
-  const rect = btnEl.getBoundingClientRect();
-  let top = rect.bottom + 6;
-  let left = rect.left;
-  if (top + 200 > window.innerHeight) top = rect.top - 200 - 6;
-  if (left + 220 > window.innerWidth) left = window.innerWidth - 228;
-  picker.style.top = top + 'px';
-  picker.style.left = Math.max(8, left) + 'px';
-
-  // Close on outside click
-  setTimeout(() => document.addEventListener('click', closeEmojiPicker, {once:true}), 10);
+const LOC_EMOJIS=['📍','🏠','🏫','🏢','🏗','🏛','🏟','⛪','🏪','🏬','🏥','🏨','🏦','🏩','🏭','🏚','🗼','🗽','⛩','🕌','🕍','🛖','🏕','⛺','🌳','🌲','🏔','⛰','🌋','🗻','🏖','🏜','🏝','🚌','🚐','🚒','🚑','🚓','✈️','🚂','⚽','🎓','🎪','🎭','🎨','🛒','💒','🔧','💡','📦'];
+let _emojiPickerLocId=null,_emojiPickerEl=null;
+function openEmojiPicker(locId,btnEl){
+  closeEmojiPicker();_emojiPickerLocId=locId;
+  const picker=document.createElement('div');picker.className='emoji-picker';picker.id='emoji-picker';
+  LOC_EMOJIS.forEach(em=>{const btn=document.createElement('button');btn.textContent=em;btn.onclick=()=>{setLocEmoji(locId,em);closeEmojiPicker();};picker.appendChild(btn);});
+  document.body.appendChild(picker);_emojiPickerEl=picker;
+  const rect=btnEl.getBoundingClientRect();let top=rect.bottom+6,left=rect.left;
+  if(top+200>window.innerHeight)top=rect.top-200-6;if(left+220>window.innerWidth)left=window.innerWidth-228;
+  picker.style.top=top+'px';picker.style.left=Math.max(8,left)+'px';
+  setTimeout(()=>document.addEventListener('click',closeEmojiPicker,{once:true}),10);
 }
-
-function closeEmojiPicker() {
-  if (_emojiPickerEl) { _emojiPickerEl.remove(); _emojiPickerEl = null; }
+function closeEmojiPicker(){if(_emojiPickerEl){_emojiPickerEl.remove();_emojiPickerEl=null;}}
+async function setLocEmoji(locId,emoji){
+  const loc=state.locations.find(l=>l.id===locId);if(!loc)return;
+  loc.emoji=emoji;renderLocationList();renderBoard();renderAllSelects();renderMoveAll();await saveState();
 }
-
-async function setLocEmoji(locId, emoji) {
-  const loc = state.locations.find(l=>l.id===locId); if(!loc) return;
-  loc.emoji = emoji;
-  renderLocationList(); renderBoard(); renderAllSelects(); renderMoveAll();
-  await saveState();
+async function renameLocation(id,newName){
+  newName=newName.trim();if(!newName){renderLocationList();return;}
+  const loc=state.locations.find(l=>l.id===id);if(!loc||loc.name===newName)return;
+  loc.name=newName;await saveState();render();
 }
-
-async function renameLocation(id, newName) {
-  newName = newName.trim();
-  if (!newName) { renderLocationList(); return; }
-  const loc = state.locations.find(l=>l.id===id);
-  if (!loc || loc.name === newName) return;
-  loc.name = newName;
-  await saveState(); render();
+async function setHome(id){
+  state.locations.forEach(l=>l.isHome=(l.id===id));await saveState();render();
+  const loc=state.locations.find(l=>l.id===id);if(loc)toast(loc.name+' is now Home 🏠');
 }
-
-async function setHome(id) {
-  state.locations.forEach(l=>l.isHome=(l.id===id));
-  await saveState(); render();
-  const loc=state.locations.find(l=>l.id===id);
-  if(loc) toast(loc.name+' is now Home 🏠');
-}
-
-// suffix: 'm' = mobile selects, 'd' = desktop selects
-async function updateEmployeeLocation(suffix) {
+async function updateEmployeeLocation(suffix){
   const empId=document.getElementById('sel-employee-'+suffix).value;
   const locId=document.getElementById('sel-location-'+suffix).value;
   if(!empId||!locId){toast('Pick a name and a location.');return;}
   const emp=state.employees.find(e=>e.id===empId);
   const loc=state.locations.find(l=>l.id===locId);
-  if(!emp||!loc) return;
+  if(!emp||!loc)return;
   if(emp.locationId===locId){toast('Already there!');return;}
-  const hadLocation = !!emp.locationId;
+  const hadLocation=!!emp.locationId;
   emp.locationId=locId;
-  if(!empHistory[empId]) empHistory[empId]=[];
+  if(!empHistory[empId])empHistory[empId]=[];
   empHistory[empId].unshift({locName:loc.name,ts:Date.now()});
   empHistory[empId]=empHistory[empId].slice(0,5);
-  if (hadLocation) inroute[empId] = Date.now();
+  if(hadLocation)inroute[empId]=Date.now();
   render();
-  document.getElementById('sel-location-m').value = '';
-  document.getElementById('sel-location-d').value = '';
-  playCheckin(); toast(emp.name+' → '+loc.name+(loc.isHome?' 🏠':'')+'!');
-  await saveState(); await saveHistory(); await saveInroute();
+  document.getElementById('sel-location-m').value='';
+  document.getElementById('sel-location-d').value='';
+  playCheckin();toast(emp.name+' → '+loc.name+(loc.isHome?' 🏠':'')+'!');
+  await saveState();await saveHistory();await saveInroute();
 }
-
-async function moveAll() {
-  const locId=document.getElementById('sel-moveall').value;
-  if(!locId){toast('Pick a location.');return;}
-  const loc=state.locations.find(l=>l.id===locId); if(!loc) return;
+async function moveAll(){
+  const locId=document.getElementById('sel-moveall').value;if(!locId){toast('Pick a location.');return;}
+  const loc=state.locations.find(l=>l.id===locId);if(!loc)return;
   const ts=Date.now();
-  state.employees.forEach(e=>{
-    e.locationId=locId;
-    if(!empHistory[e.id]) empHistory[e.id]=[];
-    empHistory[e.id].unshift({locName:loc.name,ts});
-    empHistory[e.id]=empHistory[e.id].slice(0,5);
-  });
-  render();
-  closeModal('modal-moveall'); playCheckin();
-  toast('Everyone moved to '+loc.name+(loc.isHome?' 🏠':'')+'!');
-  await saveState(); await saveHistory();
+  state.employees.forEach(e=>{e.locationId=locId;if(!empHistory[e.id])empHistory[e.id]=[];empHistory[e.id].unshift({locName:loc.name,ts});empHistory[e.id]=empHistory[e.id].slice(0,5);});
+  render();closeModal('modal-moveall');playCheckin();toast('Everyone moved to '+loc.name+(loc.isHome?' 🏠':'')+'!');
+  await saveState();await saveHistory();
 }
-
-async function confirmClearAll() {
-  if(!confirm('Clear all check-ins?')) return;
-  state.employees.forEach(e=>e.locationId=null);
-  render(); toast('All check-ins cleared.'); await saveState();
+async function confirmClearAll(){
+  if(!confirm('Clear all check-ins?'))return;
+  state.employees.forEach(e=>e.locationId=null);render();toast('All check-ins cleared.');await saveState();
 }
-
-async function sendAnnouncement() {
-  const msg=document.getElementById('announce-text').value.trim();
-  if(!msg){toast('Type a message first.');return;}
+async function sendAnnouncement(){
+  const msg=document.getElementById('announce-text').value.trim();if(!msg){toast('Type a message first.');return;}
   announcement={msg,id:uid(),ts:Date.now()};
-  await saveAnnouncement(); renderAnnouncement();
-  closeModal('modal-announce');
-  document.getElementById('announce-text').value='';
-  toast('Announcement sent!');
+  await saveAnnouncement();renderAnnouncement();closeModal('modal-announce');
+  document.getElementById('announce-text').value='';toast('Announcement sent!');
 }
-
-async function clearAnnouncement() {
-  announcement=null;
-  await saveAnnouncement(); renderAnnouncement();
-  closeModal('modal-announce'); toast('Announcement cleared.');
+async function clearAnnouncement(){
+  announcement=null;await saveAnnouncement();renderAnnouncement();closeModal('modal-announce');toast('Announcement cleared.');
 }
-
-function dismissAnnouncement() {
-  if(!announcement) return;
-  localStorage.setItem('ann_'+(announcement.id||''),'1');
-  renderAnnouncement();
+function dismissAnnouncement(){
+  if(!announcement)return;localStorage.setItem('ann_'+(announcement.id||''),'1');renderAnnouncement();
 }
 
 // ════════════════════════════════════════════════════════════
-//  MOBILE MANAGE: long-press the ✓ button
+//  MOBILE LONG-PRESS MANAGE
 // ════════════════════════════════════════════════════════════
-(function() {
-  const btn = document.querySelector('#bottom-bar .checkin-btn');
-  let timer;
-  btn.addEventListener('touchstart', () => { timer=setTimeout(()=>openModal('modal-manage'), 600); }, {passive:true});
-  btn.addEventListener('touchend',   () => clearTimeout(timer));
-  btn.addEventListener('touchmove',  () => clearTimeout(timer));
+(function(){
+  const btn=document.querySelector('#bottom-bar .checkin-btn');let timer;
+  btn.addEventListener('touchstart',()=>{timer=setTimeout(()=>openModal('modal-manage'),600);},{passive:true});
+  btn.addEventListener('touchend',()=>clearTimeout(timer));
+  btn.addEventListener('touchmove',()=>clearTimeout(timer));
 })();
 
 // ════════════════════════════════════════════════════════════
 //  MODALS
 // ════════════════════════════════════════════════════════════
-function openModal(id) { document.getElementById(id).classList.add('open'); render(); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('.modal-backdrop').forEach(el=>{
-  el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});
-});
+function openModal(id){document.getElementById(id).classList.add('open');render();}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-backdrop').forEach(el=>{el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});});
 
 // ════════════════════════════════════════════════════════════
 //  TOAST
 // ════════════════════════════════════════════════════════════
-function toast(msg,dur=2600) {
+function toast(msg,dur=2600){
   const c=document.getElementById('toast-container');
-  const el=document.createElement('div');
-  el.className='toast';el.textContent=msg;c.appendChild(el);
+  const el=document.createElement('div');el.className='toast';el.textContent=msg;c.appendChild(el);
   setTimeout(()=>{el.classList.add('fade-out');setTimeout(()=>el.remove(),250);},dur);
 }
 
 // ════════════════════════════════════════════════════════════
 //  INIT
 // ════════════════════════════════════════════════════════════
-async function initApp() {
-  await loadAll();
-  render();
-  renderAnnouncement();
-  startStreaming();
-  // Poll every 30s to clear expired in-route badges on all devices
-  setInterval(async () => {
-    const now = Date.now();
-    const expired = Object.keys(inroute).filter(id => now - inroute[id] >= INROUTE_MS);
-    if (expired.length) {
-      expired.forEach(id => delete inroute[id]);
-      await saveInroute();
-      renderBoard();
-    }
-  }, 30000);
+async function initApp(){
+  await loadAll();render();renderAnnouncement();startStreaming();
+  setInterval(async()=>{
+    const now=Date.now();
+    const expired=Object.keys(inroute).filter(id=>now-inroute[id]>=INROUTE_MS);
+    if(expired.length){expired.forEach(id=>delete inroute[id]);await saveInroute();renderBoard();}
+  },30000);
 }
-
-(function() {
-  const name=loadName();
-  if(name){currentName=name;showApp(name);}
-})();
+(function(){const name=loadName();if(name){currentName=name;showApp(name);}})();
 </script>
 </body>
 </html>
